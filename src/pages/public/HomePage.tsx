@@ -47,7 +47,7 @@ export function HomePage() {
             className="hero-photo"
           />
         )}
-        <div className="site-container">
+        <div className="site-container home-hero-panel">
           <h1 className="hero-title">
             Encontre quem
             <br className="hidden md:block" /> resolve, perto de você.
@@ -95,12 +95,14 @@ export function HomePage() {
                   <Link
                     key={c.id}
                     to={`/busca?categoria=${c.slug}`}
-                    className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white p-3 text-center transition hover:border-brand"
+                    className="category-chip"
                   >
-                    <CategoryIcon
-                      name={c.icon}
-                      className="h-9 w-9 text-brand"
-                    />
+                    <span className="category-chip-icon">
+                      <CategoryIcon
+                        name={c.icon}
+                        className="h-6 w-6 text-white"
+                      />
+                    </span>
                     <span>{c.name}</span>
                   </Link>
                 ))}
@@ -137,7 +139,7 @@ export function HomePage() {
             </section>
           </>
         )}
-        <section className="flex flex-wrap items-center gap-5 rounded-xl bg-brand-soft px-6 py-4">
+        <section className="glass-card flex flex-wrap items-center gap-5 px-6 py-4">
           <UsersRound size={40} className="text-brand" />
           <div>
             <h2 className="text-lg font-extrabold">

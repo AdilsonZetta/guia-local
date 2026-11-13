@@ -172,8 +172,8 @@ export function LoginPage() {
       </div>
     )
   return (
-    <div className="site-container grid items-start gap-8 py-10 lg:grid-cols-2">
-      <section className="login-story relative overflow-hidden rounded-xl bg-brand-soft p-8 md:p-12">
+    <div className="login-stage site-container grid items-stretch gap-8 py-10 lg:grid-cols-2">
+      <section className="login-story relative overflow-hidden p-8 md:p-12">
         <MapPin className="mb-8 h-14 w-14 text-brand" />
         <h2 className="text-4xl font-extrabold md:text-5xl">
           Sua cidade tem boas indicações.
@@ -194,7 +194,7 @@ export function LoginPage() {
           ))}
         </div>
       </section>
-      <Card className="space-y-6 p-6 md:p-8">
+      <Card className="login-card space-y-6 p-6 md:p-8">
         <div className="text-center">
           <MapPin className="mx-auto mb-3 h-9 w-9 text-brand" />
           <h1 className="text-2xl font-extrabold">

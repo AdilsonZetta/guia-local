@@ -15,6 +15,7 @@ import { catalog, useResource } from '@/lib/public-data'
 import { supabase } from '@/lib/supabase'
 import { checked } from '@/lib/management'
 import { GlobalAdminSearch, NotificationBell } from './ManagementTools'
+import { MeshBackground } from './MeshBackground'
 export type SidebarItem = {
   to: string
   label: string
@@ -86,8 +87,9 @@ export function SidebarLayout({
     </nav>
   )
   return (
-    <div className="mesh-shell management-shell min-h-svh bg-canvas md:grid md:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="management-sidebar hidden border-r border-line bg-white md:flex md:flex-col">
+    <div className="mesh-shell management-shell min-h-svh">
+      <MeshBackground />
+      <aside className="management-sidebar hidden md:flex md:flex-col">
         <Link to={homeTo} className="flex items-center gap-3 px-6 py-5">
           <MapPin className="brand-pin h-10 w-10 fill-brand text-brand" />
           <span>
@@ -150,8 +152,8 @@ export function SidebarLayout({
           </div>
         </div>
       </aside>
-      <div className="min-w-0">
-        <header className="management-topbar flex items-center gap-5 border-b border-line bg-white px-6">
+      <div className="management-main min-w-0">
+        <header className="management-topbar flex items-center gap-5 px-6">
           <button
             className="md:hidden"
             aria-label="Menu"
@@ -180,7 +182,7 @@ export function SidebarLayout({
             </span>
           </div>
         </header>
-        {open && <div className="bg-white md:hidden">{nav}</div>}
+        {open && <div className="management-mobile-nav md:hidden">{nav}</div>}
         <main
           key={location.pathname + location.search}
           className="management-content"

@@ -14,6 +14,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { NotificationBell } from './ManagementTools'
+import { MeshBackground } from './MeshBackground'
 import { applySeo } from '@/lib/seo'
 const links = [
   { to: '/busca', label: 'Explorar', icon: Search },
@@ -52,7 +53,8 @@ export function PublicLayout() {
     .map((n: string) => n[0])
     .join('')
   return (
-    <div className="mesh-shell public-shell flex min-h-svh flex-col bg-canvas">
+    <div className="mesh-shell public-shell flex min-h-svh flex-col">
+      <MeshBackground />
       <header className="public-header">
         <div className="site-container flex h-16 items-center gap-6">
           <Link

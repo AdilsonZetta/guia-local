@@ -228,7 +228,17 @@ export function ActivityChart({
       <div className="h-64" role="img" aria-label="Gráfico de atividade diária">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
-            <CartesianGrid stroke="#edf0f3" />
+            <defs>
+              <linearGradient id="fillVisits" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#0F7B5A" stopOpacity={0.5} />
+                <stop offset="100%" stopColor="#0F7B5A" stopOpacity={0.04} />
+              </linearGradient>
+              <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#16A37A" stopOpacity={0.42} />
+                <stop offset="100%" stopColor="#16A37A" stopOpacity={0.03} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#ffffff80" />
             <XAxis
               dataKey="date"
               axisLine={false}
@@ -258,9 +268,9 @@ export function ActivityChart({
               dataKey="total"
               name="Visitas"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
-              stroke="#008765"
-              fill="#008765"
-              fillOpacity={0.14}
+              stroke="#0F7B5A"
+              fill="url(#fillVisits)"
+              fillOpacity={1}
               strokeWidth={2}
             />
             <Area
@@ -271,9 +281,9 @@ export function ActivityChart({
               dataKey="clicks"
               name="Cliques no WhatsApp"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
-              stroke="#46cd99"
-              fill="#46cd99"
-              fillOpacity={0.08}
+              stroke="#16A37A"
+              fill="url(#fillClicks)"
+              fillOpacity={1}
               strokeWidth={2}
             />
           </AreaChart>
