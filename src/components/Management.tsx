@@ -230,12 +230,12 @@ export function ActivityChart({
           <AreaChart data={data}>
             <defs>
               <linearGradient id="fillVisits" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0F7B5A" stopOpacity={0.5} />
-                <stop offset="100%" stopColor="#0F7B5A" stopOpacity={0.04} />
+                <stop offset="0%" stopColor="#09090b" stopOpacity={0.5} />
+                <stop offset="100%" stopColor="#09090b" stopOpacity={0.04} />
               </linearGradient>
               <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#16A37A" stopOpacity={0.42} />
-                <stop offset="100%" stopColor="#16A37A" stopOpacity={0.03} />
+                <stop offset="0%" stopColor="#52525b" stopOpacity={0.42} />
+                <stop offset="100%" stopColor="#52525b" stopOpacity={0.03} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#ffffff80" />
@@ -268,7 +268,7 @@ export function ActivityChart({
               dataKey="total"
               name="Visitas"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
-              stroke="#0F7B5A"
+              stroke="#09090b"
               fill="url(#fillVisits)"
               fillOpacity={1}
               strokeWidth={2}
@@ -281,7 +281,7 @@ export function ActivityChart({
               dataKey="clicks"
               name="Cliques no WhatsApp"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
-              stroke="#16A37A"
+              stroke="#52525b"
               fill="url(#fillClicks)"
               fillOpacity={1}
               strokeWidth={2}

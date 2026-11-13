@@ -24,7 +24,7 @@ export function Button({
         variant === 'ghost' && 'bg-transparent text-ink hover:bg-brand-soft',
         variant === 'outline' && 'btn-outline',
         variant === 'danger' && 'bg-danger text-white hover:bg-[#9a3412]',
-        variant === 'whatsapp' && 'btn-primary text-white',
+        variant === 'whatsapp' && 'btn-whatsapp text-white',
         size === 'sm' && 'h-9 px-3 text-sm',
         size === 'md' && 'h-11 px-4 text-sm',
         size === 'lg' && 'h-12 px-5 text-base',

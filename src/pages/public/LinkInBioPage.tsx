@@ -1,3 +1,4 @@
+import { MeshBackground } from '@/components/layout/MeshBackground'
 import { WhatsAppIcon } from '@/components/WhatsAppIcon'
 import { Link, useParams } from 'react-router-dom'
 import { MapPin, Share2, ChevronRight } from 'lucide-react'
@@ -94,9 +95,9 @@ export function LinkInBioPage() {
   const theme = themes[link.theme] ?? themes.forest
   return (
     <main
-      className="bio-page relative flex min-h-svh justify-center overflow-hidden px-5 py-12"
-      style={{ backgroundColor: theme.background, color: theme.accent }}
+      className="bio-page mesh-shell relative flex min-h-svh justify-center overflow-hidden px-5 py-12 text-ink"
     >
+      <MeshBackground />
       <div className="relative z-10 w-full max-w-xl py-8 text-center">
         <button
           aria-label="Compartilhar página"
@@ -128,11 +129,11 @@ export function LinkInBioPage() {
           </p>
         )}
         <BrandTile business={business} className="bio-logo" />
-        <h1 style={link.theme==='dark'?{color:theme.accent}:undefined} className="mt-5 text-4xl font-extrabold text-ink md:text-5xl">
+        <h1 className="mt-5 text-4xl font-extrabold text-ink md:text-5xl">
           {link.headline || business.name}
         </h1>
         {link.bio && (
-          <p style={link.theme==='dark'?{color:theme.accent}:undefined} className="mt-3 whitespace-pre-wrap text-2xl leading-snug text-muted">
+          <p className="mt-3 whitespace-pre-wrap text-2xl leading-snug text-muted">
             {link.bio}
           </p>
         )}

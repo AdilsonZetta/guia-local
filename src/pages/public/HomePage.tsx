@@ -100,7 +100,7 @@ export function HomePage() {
                     <span className="category-chip-icon">
                       <CategoryIcon
                         name={c.icon}
-                        className="h-6 w-6 text-white"
+                        className="h-6 w-6 text-ink"
                       />
                     </span>
                     <span>{c.name}</span>
