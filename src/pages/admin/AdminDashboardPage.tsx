@@ -64,8 +64,8 @@ export function AdminDashboardPage() {
           <>
             <Metrics
               items={[
-                ['Empresas cadastradas', d.businesses.filter(inPeriod).length],
-                ['Usuários cadastrados', d.profiles.filter(inPeriod).length],
+                ['Empresas cadastradas', d.businesses.length],
+                ['Usuários cadastrados', d.profiles.length],
                 ['Cliques no WhatsApp', d.clicks.filter(inPeriod).length],
                 [
                   'Avaliações publicadas',

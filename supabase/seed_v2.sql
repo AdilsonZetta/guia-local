@@ -111,7 +111,7 @@ insert into public.businesses (
   '22222222-2222-4222-8222-222222222201',
   null, '34991001112', '5534991001112', 'climacerto',
   null,
-  'https://images.unsplash.com/photo-1631545298451-d7d869effc46?auto=format&fit=crop&w=1600&q=80',
+  'https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1600&q=80',
   'active', false, true, true, current_date + 25, true,
   'client_address', true, '#38BDF8', 'snowflake',
   now() - interval '80 days', now() - interval '78 days'
@@ -156,7 +156,7 @@ insert into public.businesses (
   '22222222-2222-4222-8222-222222222203',
   null, '34991001115', '5534991001115', 'capricholimpeza',
   null,
-  'https://images.unsplash.com/photo-1558317374-067fb5f30049?auto=format&fit=crop&w=1600&q=80',
+  'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=1600&q=80',
   'active', false, true, false, current_date - 5, false,
   'client_address', true, '#C084FC', 'flower-2',
   now() - interval '50 days', now() - interval '48 days'
@@ -171,7 +171,7 @@ insert into public.businesses (
   '22222222-2222-4222-8222-222222222201',
   null, '34991001116', '5534991001116', 'laremordem',
   null,
-  'https://images.unsplash.com/photo-1615874959470-d45c285af00d?auto=format&fit=crop&w=1600&q=80',
+  'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80',
   'active', false, true, true, current_date + 10, false,
   'client_address', true, '#4ADE80', 'home',
   now() - interval '40 days', now() - interval '38 days'
@@ -230,17 +230,17 @@ on conflict (id) do nothing;
 insert into public.business_photos (business_id, url, is_cover, sort_order, alt) values
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1563453392212-326f5e854473?auto=format&fit=crop&w=1200&q=80', true, 1, 'Cesta de limpeza'),
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80', false, 2, 'Limpeza de bancada'),
-  ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1615874959470-d45c285af00d?auto=format&fit=crop&w=1200&q=80', false, 3, 'Quarto organizado'),
+  ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80', false, 3, 'Quarto organizado'),
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1556912173-46c336c7fd55?auto=format&fit=crop&w=1200&q=80', false, 4, 'Cozinha'),
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80', false, 5, 'Sala'),
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=80', false, 6, 'Banheiro'),
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1563453392212-326f5e854473?auto=format&fit=crop&w=1200&q=80', false, 7, 'Bancada'),
   ('44444444-4444-4444-8444-444444444411', 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80', false, 8, 'Janelas'),
-  ('44444444-4444-4444-8444-444444444412', 'https://images.unsplash.com/photo-1631545298451-d7d869effc46?auto=format&fit=crop&w=1200&q=80', true, 1, 'Instalação de ar-condicionado'),
+  ('44444444-4444-4444-8444-444444444412', 'https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1200&q=80', true, 1, 'Instalação de ar-condicionado'),
   ('44444444-4444-4444-8444-444444444413', 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1200&q=80', true, 1, 'Quadro elétrico'),
   ('44444444-4444-4444-8444-444444444414', 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80', true, 1, 'Limpeza'),
-  ('44444444-4444-4444-8444-444444444415', 'https://images.unsplash.com/photo-1558317374-067fb5f30049?auto=format&fit=crop&w=1200&q=80', true, 1, 'Aspirador'),
-  ('44444444-4444-4444-8444-444444444416', 'https://images.unsplash.com/photo-1615874959470-d45c285af00d?auto=format&fit=crop&w=1200&q=80', true, 1, 'Quarto pronto');
+  ('44444444-4444-4444-8444-444444444415', 'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=1200&q=80', true, 1, 'Aspirador'),
+  ('44444444-4444-4444-8444-444444444416', 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80', true, 1, 'Quarto pronto');
 
 -- reviews for Juliana (published)
 insert into public.reviews (id, business_id, user_id, rating, title, body, status, reply_text, replied_at, created_at, service_id, experience_month)
