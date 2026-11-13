@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Send, UsersRound } from 'lucide-react'
+import { ArrowRight, Building2, MapPin, Send, Star, UsersRound } from 'lucide-react'
 import { catalog, publicBusinesses, useResource } from '@/lib/public-data'
 import { supabase } from '@/lib/supabase'
 import { CategoryIcon } from '@/components/CategoryIcon'
@@ -7,7 +7,6 @@ import { BusinessCard } from '@/components/business/BusinessCard'
 import {
   BrandTile,
   Rating,
-  ReceivingChip,
 } from '@/components/business/BusinessIdentity'
 import { SearchBar } from '@/components/SearchBar'
 import { Spinner } from '@/components/ui/Spinner'
@@ -36,45 +35,100 @@ export function HomePage() {
     }
   })
   const data = resource.data
-  const featured = data?.businesses[0]
+  const city = data?.city || 'Uberaba'
+  const businesses = data?.businesses || []
+  const featuredCards = businesses.filter((b) => b.cover_url).slice(0, 2)
+  const businessCount = businesses.length
+  const reviewCount = businesses.reduce(
+    (sum, b) => sum + (b.business_stats?.review_count || 0),
+    0,
+  )
+  const avgRating = (() => {
+    const rated = businesses.filter((b) => (b.business_stats?.review_count || 0) > 0 && b.business_stats?.avg_rating)
+    if (!rated.length) return null
+    const total = rated.reduce((sum, b) => sum + Number(b.business_stats?.avg_rating || 0), 0)
+    return total / rated.length
+  })()
   return (
     <>
       <section className="home-hero">
-        {featured?.cover_url && (
-          <img
-            src={featured.cover_url}
-            alt="Serviços e profissionais da sua cidade"
-            className="hero-photo"
-          />
-        )}
-        <div className="site-container home-hero-panel">
-          <h1 className="hero-title">
-            Encontre quem
-            <br className="hidden md:block" /> resolve, perto de você.
-          </h1>
-          <p className="hero-description">
-            Empresas e profissionais em {data?.city || 'Uberaba'},
-            <br className="hidden md:block" /> com avaliações de clientes.
-          </p>
-          {featured && (
-            <div className="featured-float">
-              <BrandTile business={featured} className="!h-16 !w-16" />
-              <div>
-                <h3 className="font-extrabold">{featured.name}</h3>
-                <p className="text-xs text-muted">
-                  {featured.categories?.name}
-                </p>
-                <div className="my-1">
-                  <Rating
-                    rating={featured.business_stats?.avg_rating}
-                    count={featured.business_stats?.review_count}
+        <div className="hero-texture" aria-hidden="true" />
+        <div className="site-container home-hero-layout">
+          <div className="home-hero-copy">
+            <p className="hero-eyebrow">
+              <MapPin size={14} />
+              Guia de {city}
+            </p>
+            <h1 className="hero-title">
+              Encontre quem <span className="hero-highlight">resolve</span>, perto de você.
+            </h1>
+            <p className="hero-description">
+              Empresas e profissionais em {city}, com avaliações de quem já contratou.
+            </p>
+          </div>
+          <div className="home-hero-search">
+            <SearchBar neighborhoods={data?.neighborhoods || []} />
+            <ul className="hero-trust">
+              <li>
+                <Building2 size={16} />
+                <span>
+                  <strong>{businessCount}</strong> {businessCount === 1 ? 'negócio' : 'negócios'}
+                </span>
+              </li>
+              <li>
+                <Star size={16} className="fill-current" />
+                <span>
+                  {avgRating != null ? (
+                    <>
+                      <strong>
+                        {avgRating.toLocaleString('pt-BR', {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        })}
+                      </strong>{' '}
+                      de média
+                    </>
+                  ) : (
+                    <strong>Novas avaliações</strong>
+                  )}
+                </span>
+              </li>
+              <li>
+                <UsersRound size={16} />
+                <span>
+                  <strong>{reviewCount}</strong> {reviewCount === 1 ? 'avaliação' : 'avaliações'}
+                </span>
+              </li>
+            </ul>
+          </div>
+          {featuredCards.length > 0 && (
+            <aside className="hero-card-stack" aria-label="Negócios em destaque">
+              {featuredCards.map((b) => (
+                <Link
+                  key={b.id}
+                  to={`/empresa/${b.slug}`}
+                  className="hero-stack-card"
+                >
+                  <img
+                    src={b.cover_url!}
+                    alt=""
+                    className="hero-stack-cover"
                   />
-                </div>
-                <ReceivingChip business={featured} />
-              </div>
-            </div>
+                  <div className="hero-stack-body">
+                    <BrandTile business={b} className="!h-12 !w-12" />
+                    <div>
+                      <h3>{b.name}</h3>
+                      <p>{b.categories?.name}</p>
+                      <Rating
+                        rating={b.business_stats?.avg_rating}
+                        count={b.business_stats?.review_count}
+                      />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </aside>
           )}
-          <SearchBar neighborhoods={data?.neighborhoods || []} />
         </div>
       </section>
       <div className="site-container space-y-5 py-4">
