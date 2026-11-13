@@ -165,11 +165,11 @@ export function LinkInBioPage() {
                 }
                 rel="noopener noreferrer"
                 style={{
-                  backgroundColor: whatsapp ? theme.card : 'white',
-                  color: whatsapp ? 'white' : theme.accent,
+                  backgroundColor: whatsapp ? theme.card : 'var(--glass-fill)',
+                  color: whatsapp ? 'white' : link.theme === 'dark' ? '#0e1536' : theme.accent,
                   borderColor: theme.card,
                 }}
-                className="flex min-h-20 items-center justify-between gap-4 rounded-2xl border-2 px-6 py-5 text-xl font-extrabold shadow-sm transition hover:-translate-y-0.5"
+                className="bio-link flex min-h-20 items-center justify-between gap-4 rounded-2xl border-2 px-6 py-5 text-xl font-extrabold shadow-sm transition hover:-translate-y-0.5"
                 onClick={() => {
                   if (whatsapp)
                     void logWhatsAppClick({

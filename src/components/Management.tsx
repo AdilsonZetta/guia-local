@@ -1,5 +1,6 @@
 import { BarChart3, MessageCircle, Star, Users } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/context/AuthProvider'
 import { BusinessRegistrationForm } from '@/components/forms/BusinessRegistrationForm'
@@ -149,6 +150,28 @@ export function Status({ value }: { value: string }) {
   )
 }
 
+function AnimatedMetric({ value }: { value: string | number }) {
+  const reduced = useReducedMotion()
+  const numeric = typeof value === 'number' && Number.isFinite(value)
+  const [frame, setFrame] = useState<{ value: number; progress: number } | null>(null)
+  useEffect(() => {
+    if (!numeric || reduced) return
+    let id = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const progress = Math.min((now - start) / 700, 1)
+      setFrame({ value, progress: 1 - (1 - progress) ** 3 })
+      if (progress < 1) id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [value, numeric, reduced])
+  const displayed = numeric && !reduced && frame?.value === value
+    ? Math.round(value * frame.progress * (Number.isInteger(value) ? 1 : 10)) / (Number.isInteger(value) ? 1 : 10)
+    : value
+  return <span className="metric-number" aria-label={String(value)}><span aria-hidden="true">{displayed}</span></span>
+}
+
 export function Metrics({ items }: { items: [string, string | number][] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -164,7 +187,7 @@ export function Metrics({ items }: { items: [string, string | number][] }) {
           </span>
           <div>
             <p className="text-sm text-muted">{label.split(' · ')[0]}</p>
-            <p className="text-3xl font-bold text-ink">{value}</p>
+            <p className="text-3xl font-bold text-ink"><AnimatedMetric value={value} /></p>
             {label.includes(' · ') && (
               <p className="text-sm text-muted">{label.split(' · ')[1]}</p>
             )}
@@ -184,6 +207,7 @@ export function ActivityChart({
   days?: number
   clicks?: { created_at: string }[]
 }) {
+  const reduced = useReducedMotion()
   const [today] = useState(() => new Date())
   const data = Array.from({ length: days }, (_, i) => {
     const d = new Date(today)
@@ -210,14 +234,14 @@ export function ActivityChart({
               axisLine={false}
               tickLine={false}
               minTickGap={50}
-              tick={{ fontSize: 12, fill: '#6f7998' }}
+              tick={{ fontSize: 12, fill: '#53627d' }}
             />
             <YAxis
               allowDecimals={false}
               axisLine={false}
               tickLine={false}
               width={38}
-              tick={{ fontSize: 12, fill: '#6f7998' }}
+              tick={{ fontSize: 12, fill: '#53627d' }}
             />
             <Tooltip />
             <Legend
@@ -228,6 +252,9 @@ export function ActivityChart({
             />
             <Area
               type="monotone"
+              isAnimationActive={!reduced}
+              animationDuration={550}
+              animationEasing="ease-out"
               dataKey="total"
               name="Visitas"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
@@ -238,6 +265,9 @@ export function ActivityChart({
             />
             <Area
               type="monotone"
+              isAnimationActive={!reduced}
+              animationDuration={550}
+              animationEasing="ease-out"
               dataKey="clicks"
               name="Cliques no WhatsApp"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}

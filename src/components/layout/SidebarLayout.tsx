@@ -86,7 +86,7 @@ export function SidebarLayout({
     </nav>
   )
   return (
-    <div className="management-shell min-h-svh bg-canvas md:grid md:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="mesh-shell management-shell min-h-svh bg-canvas md:grid md:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="management-sidebar hidden border-r border-line bg-white md:flex md:flex-col">
         <Link to={homeTo} className="flex items-center gap-3 px-6 py-5">
           <MapPin className="brand-pin h-10 w-10 fill-brand text-brand" />

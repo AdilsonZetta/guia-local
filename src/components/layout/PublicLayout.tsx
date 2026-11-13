@@ -52,7 +52,7 @@ export function PublicLayout() {
     .map((n: string) => n[0])
     .join('')
   return (
-    <div className="flex min-h-svh flex-col bg-canvas">
+    <div className="mesh-shell public-shell flex min-h-svh flex-col bg-canvas">
       <header className="public-header">
         <div className="site-container flex h-16 items-center gap-6">
           <Link
@@ -163,7 +163,7 @@ export function PublicLayout() {
         {identity.site_description && <span>{identity.site_description}</span>}
         <Link to="/indicar">Ajude a conectar sua cidade · Indicar empresa</Link>
       </footer>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-white py-3 text-[11px] font-bold md:hidden">
+      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-white py-3 text-[11px] font-bold md:hidden">
         {[
           ...links,
           {
