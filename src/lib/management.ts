@@ -38,7 +38,7 @@ export async function all<T extends keyof Database['public']['Tables']>(
       supabase
         .from(table)
         .select('*')
-        .order(table === 'business_service_areas' ? 'neighborhood_id' : 'id')
+        .order(table === 'business_service_areas' ? 'neighborhood_id' : table === 'favorites' ? 'user_id' : 'id')
         .range(offset, offset + 499),
     )
     rows.push(...(data as unknown as Tables<T>[]))

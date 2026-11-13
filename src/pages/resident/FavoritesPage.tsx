@@ -72,7 +72,7 @@ export function FavoritesPage() {
         <div className="space-y-5">
           {resource.data.map((b) => (
             <div key={b.id}>
-              <BusinessCard business={b} source="favorites" />
+              <BusinessCard business={b} source="favorites" wide />
               <div className="mt-1 text-right">
                 <Button
                   size="sm"

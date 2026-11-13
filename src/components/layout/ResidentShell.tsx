@@ -1,36 +1,34 @@
 import { Flag, Heart, Star, UserRound } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { cn } from '@/lib/utils'
-
-const ITEMS = [
-  { to: '/morador/favoritos', label: 'Meus favoritos', icon: Heart },
+const items = [
+  { to: '/morador/favoritos', label: 'Favoritos', icon: Heart },
   { to: '/morador/avaliacoes', label: 'Minhas avaliações', icon: Star },
   { to: '/morador/indicar', label: 'Indicar empresa', icon: Flag },
   { to: '/morador/conta', label: 'Minha conta', icon: UserRound },
 ]
-
 export function ResidentShell() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-extrabold text-ink">Área do morador</h1>
-      <div className="mb-6 flex flex-wrap gap-2">
-        {ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                'inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-muted',
-                isActive && 'border-brand bg-brand-soft text-brand-dark',
-              )
-            }
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </NavLink>
-        ))}
+    <div className="site-container resident-layout grid items-start gap-7 py-8 lg:grid-cols-[245px_1fr]">
+      <aside className="min-w-0 rounded-xl border border-line bg-white p-5 lg:sticky lg:top-24">
+        <h2 className="mb-5 text-2xl font-extrabold">Minha área</h2>
+        <nav className="flex gap-2 overflow-x-auto lg:flex-col">
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex shrink-0 items-center gap-3 rounded-xl px-3 py-3 font-bold ${isActive ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-canvas'}`
+              }
+            >
+              <item.icon size={20} />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+      <div className="min-w-0">
+        <Outlet />
       </div>
-      <Outlet />
     </div>
   )
 }

@@ -1,28 +1,69 @@
+import { WhatsAppIcon } from '@/components/WhatsAppIcon'
+import { Photo } from '@/components/Photo'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Heart, Share2, MessageCircle, Star, MapPin } from 'lucide-react'
+import {
+  Heart,
+  Share2,
+  Star,
+  MapPin,
+  Home,
+  Images,
+  ArrowRight,
+  Clock,
+  Map,
+  Info,
+  Search,
+  X,
+} from 'lucide-react'
 import { publicBusiness, useResource } from '@/lib/public-data'
+import { applySeo } from '@/lib/seo'
 import { supabase } from '@/lib/supabase'
 import { logVisit, logWhatsAppClick } from '@/lib/analytics'
-import {
-  formatCurrency,
-  formatPhone,
-  isReceivingNow,
-  WEEKDAYS,
-  whatsappLink,
-} from '@/lib/utils'
+import { WEEKDAYS, whatsappLink } from '@/lib/utils'
 import { useAuth } from '@/context/AuthProvider'
-import { Badge } from '@/components/ui/Badge'
+import {
+  BrandTile,
+  Rating,
+  ReceivingChip,
+} from '@/components/business/BusinessIdentity'
+import { CategoryIcon } from '@/components/CategoryIcon'
+import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { LoadError, MissingBusiness, Notice } from '@/components/PageContent'
 
+function visitSource() {
+  const src = new URLSearchParams(window.location.search).get('src')
+  if (src) return src
+  const ref = document.referrer
+  return /instagram/i.test(ref)
+    ? 'instagram'
+    : /google/i.test(ref)
+      ? 'google'
+      : ref && ref.includes(window.location.host)
+        ? 'home'
+        : 'direct'
+}
 export function BusinessProfilePage() {
   const { slug = '' } = useParams()
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
-  const [tab, setTab] = useState('overview')
+  const [city, setCity] = useState('Uberaba')
+  const [siteName,setSiteName]=useState('Guia Local')
+  const [lightbox, setLightbox] = useState('')
+  const [reviewSort, setReviewSort] = useState('recent')
+  const [reviewRating, setReviewRating] = useState('')
+  const [reporting, setReporting] = useState('')
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [tab, setTab] = useState(
+    () =>
+      ({ servicos: 'services', avaliacoes: 'reviews' })[
+        new URLSearchParams(window.location.search).get('tab') || ''
+      ] || 'overview',
+  )
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
@@ -89,14 +130,51 @@ export function BusinessProfilePage() {
       neighborhoods: neighborhoods.data ?? [],
     }
   }, [slug])
+  useEffect(() => {
+    if (!lightbox) return
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightbox('')
+    }
+    document.addEventListener('keydown', close)
+    return () => document.removeEventListener('keydown', close)
+  }, [lightbox])
   const business = resource.data?.business
+  useEffect(() => {
+    void supabase
+      .from('site_settings')
+      .select('city_name,site_name')
+      .eq('id', 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.city_name) setCity(data.city_name)
+        if(data?.site_name)setSiteName(data.site_name)
+      })
+  }, [])
+  useEffect(() => {
+    if (!business) return
+    const previous = document.title
+    const title = `${business.name} em ${city} | ${siteName}`
+    const description =
+      business.description ||
+      business.tagline ||
+      `Conheça ${business.name} em ${city}.`
+    applySeo({
+      title,
+      description,
+      image: business.cover_url || business.logo_url || undefined,
+      url: window.location.href,
+    })
+    return () => {
+      document.title = previous
+    }
+  }, [business, city, siteName])
   useEffect(() => {
     if (!business || authLoading || visited.current === business.id) return
     visited.current = business.id
     void logVisit({
       businessId: business.id,
       visitorId: user?.id,
-      source: 'profile',
+      source: visitSource(),
     })
   }, [business, user?.id, authLoading])
   useEffect(() => {
@@ -176,301 +254,548 @@ export function BusinessProfilePage() {
     )
   if (!business || !resource.data) return <MissingBusiness />
   const data = resource.data
-  const wa = whatsappLink(business.whatsapp || business.phone)
-  return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <Link to="/busca" className="text-sm font-bold text-brand">
-        ← Voltar à busca
-      </Link>
-      <Card className="overflow-hidden">
-        {business.cover_url ? (
-          <img
-            src={business.cover_url}
-            alt={`Capa de ${business.name}`}
-            className="h-48 w-full object-cover md:h-72"
-          />
-        ) : (
-          <div className="h-28 bg-brand-soft" />
-        )}
-        <div className="space-y-5 p-6">
-          <div className="flex items-start gap-4">
-            {business.logo_url && (
-              <img
-                src={business.logo_url}
-                alt={`Logo de ${business.name}`}
-                className="h-20 w-20 rounded-2xl border border-line bg-white object-cover"
-              />
-            )}
-            <div>
-              <h1 className="text-3xl font-extrabold">{business.name}</h1>
-              <p className="mt-1 text-muted">{business.tagline}</p>
-              <p className="mt-2 text-sm text-muted">
-                {business.categories?.name}
-                {business.neighborhoods && ` · ${business.neighborhoods.name}`}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-2 inline-flex items-center gap-1 text-sm font-bold">
-              <Star size={17} className="fill-amber-400 text-amber-400" />
-              {business.business_stats?.avg_rating
-                ? Number(business.business_stats.avg_rating).toFixed(1)
-                : 'Sem nota'}{' '}
-              <span className="font-normal text-muted">
-                ({business.business_stats?.review_count ?? 0} avaliações)
-              </span>
-            </span>
-            {business.home_service && <Badge>Atende em casa</Badge>}
-            {isReceivingNow(business) && (
-              <Badge tone="success">Recebendo pedidos</Badge>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {wa && (
-              <a
-                href={wa}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#1f9e54] px-4 text-sm font-bold text-white"
+  const reviewBusiness = business
+  const wa = business.show_whatsapp
+    ? whatsappLink(business.whatsapp || business.phone)
+    : null
+  const contact = wa && (
+    <a
+      href={wa}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="btn-primary"
+      onClick={() =>
+        void logWhatsAppClick({
+          businessId: business.id,
+          userId: user?.id,
+          source: visitSource(),
+        })
+      }
+    >
+      <WhatsAppIcon size={24} />
+      Chamar no WhatsApp
+    </a>
+  )
+  const reviewLink = (
+    <Link to={`/empresa/${slug}/avaliar`} className="btn-outline">
+      <Star size={23} />
+      Escrever avaliação
+    </Link>
+  )
+  const pictures = [
+    ...(business.cover_url
+      ? [{ url: business.cover_url, alt: business.name }]
+      : []),
+    ...data.photos.filter(
+      (p) => p.url.split('?')[0] !== business.cover_url?.split('?')[0],
+    ),
+  ]
+  function reviewCard(r: (typeof data.reviews)[number]) {
+    const author =
+      data.authors.find((a) => a.id === r.user_id)?.full_name || 'Morador'
+    return (
+      <article
+        key={r.id}
+        className="rounded-xl border border-line bg-white p-4"
+      >
+        <div className="flex gap-4">
+          <span className="avatar !h-14 !w-14 !bg-indigo-50 !text-ink">
+            {author
+              .split(' ')
+              .slice(0, 2)
+              .map((n) => n[0])
+              .join('')}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex justify-between gap-3">
+              <h3 className="font-extrabold">{author}</h3>
+              <button
+                className="text-xs text-muted"
                 onClick={() => {
-                  void logWhatsAppClick({
-                    businessId: business.id,
-                    userId: user?.id,
-                    source: 'profile',
-                  })
+                  if (!user) {
+                    navigate('/entrar', {
+                      state: { from: `/empresa/${slug}` },
+                    })
+                    return
+                  }
+                  setReporting(r.id)
                 }}
               >
-                <MessageCircle size={18} /> Chamar no WhatsApp
-              </a>
+                Denunciar
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xl text-amber-500">
+                {'★'.repeat(r.rating)}
+                <span className="text-gray-300">
+                  {'★'.repeat(5 - r.rating)}
+                </span>
+              </span>
+              <span className="text-xs text-muted">
+                {data.services.find((s) => s.id === r.service_id)?.name} ·{' '}
+                {new Date(r.created_at).toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+            <p className="mt-2 whitespace-pre-wrap">{r.body}</p>
+            {r.reply_text && (
+              <div className="mt-4 flex gap-4 rounded-xl bg-canvas p-4">
+                <BrandTile
+                  business={reviewBusiness}
+                  className="!h-12 !w-12 !rounded-lg"
+                />
+                <div>
+                  <p className="text-sm font-extrabold">
+                    Resposta de {reviewBusiness.name}
+                  </p>
+                  <p className="mt-1 text-muted">{r.reply_text}</p>
+                </div>
+              </div>
             )}
-            <Button
-              variant={saved ? 'secondary' : 'outline'}
-              disabled={saving || favoriteLoading || authLoading}
-              onClick={favorite}
-            >
-              <Heart size={18} className={saved ? 'fill-current' : ''} />
-              {saved ? 'Salvo' : 'Salvar'}
-            </Button>
-            <Button variant="outline" onClick={share}>
-              <Share2 size={18} /> Compartilhar
-            </Button>
-            <Link
-              to={`/empresa/${slug}/avaliar`}
-              className="inline-flex h-11 items-center rounded-xl bg-brand px-4 text-sm font-bold text-white"
-            >
-              Avaliar
-            </Link>
           </div>
-          {error && <Notice error>{error}</Notice>}
-          {message && <Notice>{message}</Notice>}
         </div>
-      </Card>
+      </article>
+    )
+  }
+  return (
+    <div className="site-container space-y-5 py-5">
+      <nav className="flex gap-3 text-sm text-muted">
+        <Link to="/">Início</Link>
+        <span>/</span>
+        <Link to={`/busca?categoria=${business.categories?.slug || ''}`}>
+          {business.categories?.name}
+        </Link>
+        <span>/</span>
+        <span className="text-ink">{business.name}</span>
+      </nav>
+      <div className="flex flex-wrap items-center gap-5 py-2">
+        <BrandTile business={business} className="!h-24 !w-24 !rounded-2xl" />
+        <div>
+          <h1 className="text-3xl font-extrabold md:text-4xl">
+            {business.name}
+          </h1>
+          <p className="mb-1 text-lg text-muted">
+            {business.categories?.name} • {city}, MG
+          </p>
+          <Rating
+            rating={business.business_stats?.avg_rating}
+            count={business.business_stats?.review_count}
+          />
+        </div>
+        <div className="ml-auto flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            disabled={saving || favoriteLoading || authLoading}
+            onClick={favorite}
+          >
+            <Heart size={21} className={saved ? 'fill-current' : ''} />
+            {saved ? 'Salvo' : 'Salvar'}
+          </Button>
+          <Button variant="outline" onClick={share}>
+            <Share2 size={20} />
+            Compartilhar
+          </Button>
+          <Link to={`/empresa/${slug}/avaliar`} className="btn-outline">
+            <Star size={22} />
+            Avaliar
+          </Link>
+          {contact}
+        </div>
+      </div>
+      {error && <Notice error>{error}</Notice>}
+      {message && <Notice>{message}</Notice>}
       <div
         role="tablist"
         aria-label="Informações da empresa"
-        className="flex gap-1 overflow-x-auto border-b border-line"
+        className="flex gap-5 overflow-x-auto border-b border-line"
       >
         {[
-          { id: 'overview', label: 'Visão geral' },
-          { id: 'services', label: 'Serviços e fotos' },
-          { id: 'reviews', label: 'Avaliações' },
+          { id: 'overview', label: 'Visão geral', icon: Home },
+          { id: 'services', label: 'Serviços e fotos', icon: Images },
+          { id: 'reviews', label: 'Avaliações', icon: Star },
         ].map((t) => (
           <button
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`shrink-0 border-b-2 px-4 py-3 font-bold ${tab === t.id ? 'border-brand text-brand' : 'border-transparent text-muted'}`}
+            className={`flex shrink-0 items-center gap-3 border-b-[3px] px-5 py-3 text-lg ${tab === t.id ? 'border-brand font-bold text-brand' : 'border-transparent text-muted'}`}
           >
+            <t.icon size={23} />
             {t.label}
           </button>
         ))}
       </div>
       <div role="tabpanel">
         {tab === 'overview' && (
-          <div className="grid gap-6 md:grid-cols-[1fr_320px]">
-            <Card className="space-y-6 p-6">
-              <section>
-                <h2 className="mb-3 text-xl font-bold">Sobre a empresa</h2>
+          <>
+            <div className="mb-4 grid h-48 grid-cols-[2.3fr_1fr_1fr] gap-3 md:h-64">
+              {pictures.slice(0, 3).map((p, i) => (
+                <button
+                  key={`${p.url}-${i}`}
+                  onClick={() => setLightbox(p.url)}
+                  className="overflow-hidden rounded-xl"
+                >
+                  <Photo
+                    src={p.url}
+                    alt={p.alt || business.name}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+            <div className="grid items-start gap-5 lg:grid-cols-[1.7fr_1fr]">
+              <Card className="space-y-4 p-6">
+                <h2 className="text-2xl font-extrabold">Sobre o negócio</h2>
                 <p className="whitespace-pre-wrap text-muted">
                   {business.description ||
-                    'A empresa ainda não informou uma descrição.'}
+                    'Conheça os serviços e fale diretamente com a empresa.'}
                 </p>
-              </section>
-              <section>
-                <h2 className="mb-3 font-bold">Endereço e contato</h2>
-                <p className="flex items-center gap-2 text-muted">
-                  <MapPin size={17} />
-                  {business.address ||
-                    business.neighborhoods?.name ||
-                    'Endereço não informado'}
-                </p>
-                {business.phone && (
-                  <a
-                    className="mt-2 block text-brand"
-                    href={`tel:${business.phone.replace(/[^+\d]/g, '')}`}
-                  >
-                    {formatPhone(business.phone)}
-                  </a>
-                )}
-              </section>
-              <section>
-                <h2 className="mb-3 font-bold">Bairros atendidos</h2>
-                <div className="flex flex-wrap gap-2">
-                  {data.neighborhoods.length ? (
-                    data.neighborhoods.map((n) => (
-                      <Badge key={n.id}>{n.name}</Badge>
-                    ))
-                  ) : (
-                    <p className="text-muted">
-                      Consulte a empresa sobre a sua região.
-                    </p>
-                  )}
-                </div>
-              </section>
-            </Card>
-            <Card className="p-6">
-              <h2 className="mb-4 text-lg font-bold">
-                Horários de atendimento
-              </h2>
-              {data.hours.length ? (
-                <dl className="space-y-3 text-sm">
-                  {WEEKDAYS.map((day) => {
-                    const h = data.hours.find((h) => h.weekday === day.value)
-                    return (
-                      <div
-                        className="flex justify-between gap-3"
-                        key={day.value}
-                      >
-                        <dt>{day.label}</dt>
-                        <dd className="text-muted">
-                          {!h
-                            ? 'Não informado'
-                            : h.is_closed
-                              ? 'Fechado'
-                              : h.open_time && h.close_time
-                                ? `${h.open_time.slice(0, 5)}–${h.close_time.slice(0, 5)}`
-                                : 'Consultar'}
-                        </dd>
-                      </div>
-                    )
-                  })}
-                </dl>
-              ) : (
-                <p className="text-sm text-muted">
-                  Confirme os horários diretamente com a empresa.
-                </p>
-              )}
-            </Card>
-          </div>
-        )}
-        {tab === 'services' && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <h2 className="mb-4 text-xl font-bold">Serviços</h2>
-              {data.services.length ? (
-                <div className="divide-y divide-line">
+                <div className="flex flex-wrap gap-3">
                   {data.services.map((s) => (
-                    <div key={s.id} className="flex justify-between gap-4 py-4">
-                      <div>
-                        <h3 className="font-bold">{s.name}</h3>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-muted">
-                          {s.description}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-sm font-bold text-brand">
-                        {s.price_label ||
-                          formatCurrency(s.price) ||
-                          'Sob consulta'}
-                      </span>
-                    </div>
+                    <span
+                      key={s.id}
+                      className="flex items-center gap-3 rounded-xl bg-brand-soft px-4 py-3 text-brand"
+                    >
+                      <CategoryIcon name={business.brand_icon} />
+                      {s.name}
+                    </span>
                   ))}
                 </div>
-              ) : (
+                <section className="space-y-3 border-t border-line pt-4">
+                  <h2 className="text-2xl font-extrabold">Quem já contratou</h2>
+                  {data.reviews[0] ? (
+                    reviewCard(data.reviews[0])
+                  ) : (
+                    <p className="text-muted">
+                      Seja a primeira pessoa a contar sua experiência.
+                    </p>
+                  )}
+                  <button
+                    className="flex items-center gap-2 text-brand underline"
+                    onClick={() => setTab('reviews')}
+                  >
+                    Ver todas as avaliações <ArrowRight size={19} />
+                  </button>
+                </section>
+              </Card>
+              <Card className="space-y-4 p-5">
+                <div>
+                  <h2 className="mb-2 text-2xl font-extrabold">
+                    Fale com {business.name}
+                  </h2>
+                  <ReceivingChip business={business} />
+                  <p className="mt-1 text-xs text-muted">
+                    Atualizado em{' '}
+                    {new Date(business.updated_at).toLocaleDateString('pt-BR', {
+                      day: 'numeric',
+                      month: 'long',
+                    })}
+                  </p>
+                </div>
+                <dl className="space-y-4 text-sm">
+                  <div className="flex items-center gap-3">
+                    <MapPin size={22} />
+                    <dt>Atendimento</dt>
+                    <dd className="ml-auto text-muted">
+                      {business.attendance_type === 'client_address'
+                        ? 'No endereço do cliente'
+                        : business.attendance_type === 'both' ? 'No endereço do cliente e do negócio' : business.location_display === 'address' ? business.address || 'Consulte a empresa' : 'No endereço do negócio'}
+                    </dd>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Map size={22} />
+                    <dt>Regiões atendidas</dt>
+                    <dd className="ml-auto flex flex-wrap gap-1">
+                      {(['city','city_only'].includes(business.location_display) ? [] : data.neighborhoods).map((n) => (
+                        <span
+                          className="rounded-full bg-canvas px-3 py-1"
+                          key={n.id}
+                        >
+                          {n.name}
+                        </span>
+                      ))}
+                    </dd>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Clock size={22} />
+                    <dt>Horário de contato</dt>
+                    <dd className="ml-auto space-y-1 text-muted">
+                      {data.hours.length ? (
+                        <details>
+                          <summary className="cursor-pointer">
+                            {data.hours
+                              .find((h) => !h.is_closed)
+                              ?.open_time?.slice(0, 5) || 'Consultar'}{' '}
+                            às{' '}
+                            {data.hours
+                              .find((h) => !h.is_closed)
+                              ?.close_time?.slice(0, 5) || 'consultar'}{' '}
+                            · Ver horários
+                          </summary>
+                          <div className="mt-2 space-y-1">
+                            {data.hours.map((h) => (
+                              <p key={h.id}>
+                                {
+                                  WEEKDAYS.find((d) => d.value === h.weekday)
+                                    ?.label
+                                }
+                                :{' '}
+                                {h.is_closed
+                                  ? 'Fechado'
+                                  : `${h.open_time?.slice(0, 5) || '—'} às ${h.close_time?.slice(0, 5) || '—'}`}
+                              </p>
+                            ))}
+                          </div>
+                        </details>
+                      ) : (
+                        'Consultar horários'
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="grid gap-2">
+                  {contact}
+                  {reviewLink}
+                </div>
+                <p className="flex gap-2 text-xs text-muted">
+                  <Info size={18} className="shrink-0" />
+                  Combine valores e disponibilidade diretamente com a empresa.
+                </p>
+              </Card>
+            </div>
+          </>
+        )}
+        {tab === 'services' && (
+          <div className="grid items-start gap-5 lg:grid-cols-[.9fr_1.5fr]">
+            <Card className="space-y-4 p-5">
+              <h2 className="text-2xl font-extrabold">Serviços oferecidos</h2>
+              {data.services.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center gap-5 rounded-xl border border-line p-4"
+                >
+                  <span className="rounded-full bg-brand-soft p-5 text-brand">
+                    <CategoryIcon
+                      name={business.brand_icon}
+                      className="h-9 w-9"
+                    />
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-extrabold">{s.name}</h3>
+                    <p className="text-muted">{s.description}</p>
+                    {s.price_label && (
+                      <p className="mt-1 text-sm text-brand">{s.price_label}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!data.services.length && (
                 <p className="text-muted">
-                  Consulte a empresa para conhecer os serviços disponíveis.
+                  Fale com a empresa para conhecer os serviços disponíveis.
                 </p>
               )}
+              <div className="rounded-xl bg-brand-soft p-4">
+                <h3 className="mb-2 font-bold">
+                  Quer saber mais sobre um serviço?
+                </h3>
+                {contact}
+              </div>
             </Card>
-            <Card className="p-6">
-              <h2 className="mb-4 text-xl font-bold">Fotos</h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="p-5">
+              <div className="mb-4 flex justify-between">
+                <h2 className="text-2xl font-extrabold">Fotos dos trabalhos</h2>
+                <span className="text-muted">{data.photos.length} fotos</span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {data.photos.map((p) => (
-                  <a
-                    key={p.id}
-                    href={p.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <img
-                      src={p.url}
-                      alt={p.alt || business.name}
-                      loading="lazy"
-                      className="aspect-square w-full rounded-xl object-cover"
-                    />
-                  </a>
+                  <figure key={p.id}>
+                    <button
+                      className="relative block w-full overflow-hidden rounded-lg"
+                      onClick={() => setLightbox(p.url)}
+                    >
+                      <Photo
+                        src={p.url}
+                        alt={p.alt || business.name}
+                        className="aspect-[1.45] w-full object-cover"
+                        loading="lazy"
+                      />
+                      <span className="absolute right-2 top-2 rounded-full bg-white p-2">
+                        <Search size={18} />
+                      </span>
+                    </button>
+                    <figcaption className="mt-1 text-sm">
+                      {p.alt || 'Trabalho realizado'}
+                    </figcaption>
+                  </figure>
                 ))}
               </div>
               {!data.photos.length && (
                 <p className="text-muted">
-                  A empresa ainda não adicionou fotos.
+                  A empresa ainda não publicou fotos.
+                </p>
+              )}
+              <p className="mt-5 text-xs text-muted">
+                Fotos publicadas pela empresa.
+              </p>
+            </Card>
+          </div>
+        )}
+        {tab === 'reviews' && (
+          <div className="grid items-start gap-5 lg:grid-cols-[340px_1fr]">
+            <Card className="space-y-5 p-6">
+              <h2 className="border-b border-line pb-3 text-2xl font-extrabold">
+                Avaliações dos clientes
+              </h2>
+              <div className="text-center">
+                <strong className="text-7xl font-extrabold">
+                  {business.business_stats?.avg_rating
+                    ? Number(business.business_stats.avg_rating).toLocaleString(
+                        'pt-BR',
+                        { maximumFractionDigits: 1 },
+                      )
+                    : '—'}
+                </strong>
+                <p className="text-3xl text-amber-500">★★★★★</p>
+                <p className="text-muted">{data.reviews.length} avaliações</p>
+              </div>
+              <div className="space-y-3">
+                {[5, 4, 3, 2, 1].map((n) => {
+                  const count = data.reviews.filter(
+                    (r) => r.rating === n,
+                  ).length
+                  return (
+                    <div key={n} className="flex items-center gap-3 text-sm">
+                      <span className="w-16 text-muted">{n} estrelas</span>
+                      <span className="h-3.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                        <span
+                          className="block h-full rounded-full bg-amber-400"
+                          style={{
+                            width: `${data.reviews.length ? (count / data.reviews.length) * 100 : 0}%`,
+                          }}
+                        />
+                      </span>
+                      <span>{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="grid">{reviewLink}</div>
+              <p className="text-center text-sm text-muted">
+                Conte como foi sua experiência.
+              </p>
+            </Card>
+            <Card className="space-y-4 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <h2 className="text-2xl font-extrabold">
+                  Avaliações de clientes
+                </h2>
+                <div className="flex gap-2">
+                  <select
+                    aria-label="Ordenar avaliações"
+                    className="rounded-lg border border-line p-2"
+                    value={reviewSort}
+                    onChange={(e) => setReviewSort(e.target.value)}
+                  >
+                    <option value="recent">Mais recentes</option>
+                    <option value="best">Melhores notas</option>
+                  </select>
+                  <select
+                    aria-label="Filtrar notas"
+                    className="rounded-lg border border-line p-2"
+                    value={reviewRating}
+                    onChange={(e) => setReviewRating(e.target.value)}
+                  >
+                    <option value="">Todas as notas</option>
+                    {[5, 4, 3, 2, 1].map((n) => (
+                      <option key={n} value={n}>
+                        {n} estrelas
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {data.reviews
+                .filter(
+                  (r) => !reviewRating || r.rating === Number(reviewRating),
+                )
+                .sort((a, b) =>
+                  reviewSort === 'best'
+                    ? b.rating - a.rating
+                    : b.created_at.localeCompare(a.created_at),
+                )
+                .map(reviewCard)}
+              {!data.reviews.length && (
+                <p className="p-5 text-muted">
+                  Seja a primeira pessoa a avaliar este negócio.
                 </p>
               )}
             </Card>
           </div>
         )}
-        {tab === 'reviews' && (
-          <Card className="p-6">
-            <h2 className="mb-5 text-xl font-bold">
-              Experiências da comunidade
-            </h2>
-            {!data.reviews.length && (
-              <p className="text-muted">
-                Seja a primeira pessoa a avaliar esta empresa.
-              </p>
-            )}
-            <div className="space-y-5">
-              {data.reviews.map((r) => (
-                <article
-                  key={r.id}
-                  className="border-b border-line pb-5 last:border-0"
-                >
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <h3 className="font-bold">
-                      {data.authors.find((a) => a.id === r.user_id)
-                        ?.full_name || 'Morador'}
-                    </h3>
-                    <span className="text-sm text-muted">
-                      {new Date(r.created_at).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                  <p
-                    aria-label={`${r.rating} de 5 estrelas`}
-                    className="mt-1 text-amber-500"
-                  >
-                    {'★'.repeat(r.rating)}
-                    {'☆'.repeat(5 - r.rating)}
-                  </p>
-                  {r.title && <p className="mt-3 font-bold">{r.title}</p>}
-                  <p className="mt-2 whitespace-pre-wrap text-muted">
-                    {r.body}
-                  </p>
-                  {r.reply_text && (
-                    <div className="mt-4 rounded-xl bg-brand-soft p-4">
-                      <p className="text-sm font-bold text-brand-dark">
-                        Resposta da empresa
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm">
-                        {r.reply_text}
-                      </p>
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          </Card>
-        )}
       </div>
+      {lightbox && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Foto ampliada"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-8"
+          onClick={() => setLightbox('')}
+        >
+          <button
+            aria-label="Fechar foto"
+            className="absolute right-5 top-5 rounded-full bg-white p-2"
+          >
+            <X />
+          </button>
+          <Photo
+            src={lightbox}
+            alt="Foto do trabalho ampliada"
+            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+          />
+        </div>
+      )}
+      {reporting && (
+        <Modal title="Denunciar avaliação" onClose={() => setReporting('')}>
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!user) return
+              setReportBusy(true)
+              setError('')
+              const result = await supabase.from('review_reports').insert({
+                review_id: reporting,
+                user_id: user.id,
+                reason: reportReason.trim(),
+              })
+              setReportBusy(false)
+              if (result.error) {
+                setError('Não foi possível enviar a denúncia. Tente novamente.')
+              } else {
+                setMessage('Denúncia enviada para análise.')
+                setReporting('')
+                setReportReason('')
+              }
+            }}
+          >
+            {error && <Notice error>{error}</Notice>}
+            <label className="block">
+              Por que você está denunciando?
+              <textarea
+                className="mt-2 w-full rounded-xl border border-line p-3"
+                value={reportReason}
+                required
+                minLength={10}
+                maxLength={2000}
+                onChange={(e) => setReportReason(e.target.value)}
+              />
+            </label>
+            <Button type="submit" disabled={reportBusy}>
+              {reportBusy ? 'Enviando…' : 'Enviar denúncia'}
+            </Button>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

@@ -73,6 +73,8 @@ export default function App() {
           >
             <Route index element={<AdminDashboardPage />} />
             <Route path="empresas" element={<AdminBusinessesPage />} />
+            <Route path="empresas/indicacoes" element={<AdminSuggestionsPage />} />
+            <Route path="avaliacoes" element={<AdminModerationPage />} />
             <Route path="indicacoes" element={<AdminSuggestionsPage />} />
             <Route path="moderacao" element={<AdminModerationPage />} />
             <Route path="buscas" element={<AdminSearchesPage />} />
@@ -83,7 +85,7 @@ export default function App() {
           <Route
             path="/empresa-area"
             element={
-              <RequireAuth role="business">
+              <RequireAuth>
                 <BusinessLayout />
               </RequireAuth>
             }

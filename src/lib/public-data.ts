@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import type { Tables, Database } from './database.types'
 
 export type PublicBusiness = Tables<'businesses'> & {
+  serviceAreas?: Tables<'neighborhoods'>[]
   categories: Tables<'categories'> | null
   neighborhoods: Tables<'neighborhoods'> | null
   business_stats: Database['public']['Views']['business_stats']['Row'] | null
@@ -30,7 +31,7 @@ export async function enrichBusinesses(
   rows: Tables<'businesses'>[],
 ): Promise<PublicBusiness[]> {
   if (!rows.length) return []
-  const [refs, stats] = await Promise.all([
+  const [refs, stats, areas] = await Promise.all([
     catalog(),
     supabase
       .from('business_stats')
@@ -39,10 +40,23 @@ export async function enrichBusinesses(
         'business_id',
         rows.map((row) => row.id),
       ),
+    supabase
+      .from('business_service_areas')
+      .select('*')
+      .in(
+        'business_id',
+        rows.map((r) => r.id),
+      ),
   ])
+  if (areas.error) throw areas.error
   if (stats.error) throw stats.error
   return rows.map((row) => ({
     ...row,
+    serviceAreas: refs.neighborhoods.filter((n) =>
+      areas.data.some(
+        (a) => a.business_id === row.id && a.neighborhood_id === n.id,
+      ),
+    ),
     categories: refs.categories.find((c) => c.id === row.category_id) ?? null,
     neighborhoods:
       refs.neighborhoods.find((n) => n.id === row.neighborhood_id) ?? null,

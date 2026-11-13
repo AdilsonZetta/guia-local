@@ -28,15 +28,24 @@ export function LoginPage() {
   const { user, business, profile, loading } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'login' | 'signup'>('login')
-  const [method, setMethod] = useState<'password' | 'magic'>('password')
-  const [accountType, setAccountType] = useState('morador')
+  const companySignup =
+    new URLSearchParams(location.search).get('tipo') === 'empresa'
+  const [tab, setTab] = useState<'login' | 'signup'>(
+    companySignup ? 'signup' : 'login',
+  )
+  const [accountType, setAccountType] = useState(
+    companySignup ? 'empresa' : 'morador',
+  )
   const [email, setEmail] = useState('')
+  const [recovery, setRecovery] = useState(() =>
+    window.location.hash.includes('type=recovery'),
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [registerBusiness, setRegisterBusiness] = useState(false)
-  const from: unknown = location.state?.from
+  const from: unknown =
+    location.state?.from || new URLSearchParams(location.search).get('retorno')
   const destination =
     typeof from === 'string' &&
     from.startsWith('/') &&
@@ -46,10 +55,33 @@ export function LoginPage() {
       ? from
       : '/morador/favoritos'
   useEffect(() => {
-    if (!user || loading || busy) return
+    if (companySignup) {
+      setTab('signup')
+      setAccountType('empresa')
+    }
+  }, [companySignup])
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+  useEffect(() => {
+    if (
+      !user ||
+      loading ||
+      busy ||
+      recovery ||
+      window.location.hash.includes('type=recovery')
+    )
+      return
     if (
       !business &&
-      (registerBusiness || user.user_metadata.account_type === 'empresa')
+      (registerBusiness ||
+        companySignup ||
+        user.user_metadata.account_type === 'empresa')
     ) {
       setRegisterBusiness(true)
       return
@@ -62,6 +94,8 @@ export function LoginPage() {
     loading,
     busy,
     registerBusiness,
+    companySignup,
+    recovery,
     destination,
     navigate,
     profile?.status,
@@ -72,18 +106,9 @@ export function LoginPage() {
     setBusy(true)
     setError('')
     setMessage('')
-    const emailRedirectTo = `${window.location.origin}${BASE_PATH}/`
+    const emailRedirectTo = `${window.location.origin}${BASE_PATH}/entrar?retorno=${encodeURIComponent(destination)}`
     try {
-      if (method === 'magic' && tab === 'login') {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: { emailRedirectTo, shouldCreateUser: false },
-        })
-        if (error) throw error
-        setMessage(
-          'Link de acesso enviado! Confira sua caixa de entrada e o spam. O envio pode levar alguns minutos; há um limite de mensagens por período.',
-        )
-      } else if (tab === 'login') {
+      if (tab === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password: String(form.get('password')),
@@ -147,14 +172,35 @@ export function LoginPage() {
       </div>
     )
   return (
-    <div className="mx-auto max-w-lg px-4 py-10">
+    <div className="site-container grid items-start gap-8 py-10 lg:grid-cols-2">
+      <section className="login-story relative overflow-hidden rounded-xl bg-brand-soft p-8 md:p-12">
+        <MapPin className="mb-8 h-14 w-14 text-brand" />
+        <h2 className="text-4xl font-extrabold md:text-5xl">
+          Sua cidade tem boas indicações.
+        </h2>
+        <p className="mt-5 text-xl text-muted">
+          Encontre quem resolve, perto de você.
+        </p>
+        <div className="mt-10 space-y-6">
+          {[
+            'Descubra empresas e profissionais da sua região.',
+            'Salve seus favoritos e fale diretamente com os negócios.',
+            'Compartilhe experiências que ajudam outras pessoas.',
+          ].map((text, i) => (
+            <p key={text} className="flex items-center gap-4">
+              <span className="avatar !bg-white">{i + 1}</span>
+              {text}
+            </p>
+          ))}
+        </div>
+      </section>
       <Card className="space-y-6 p-6 md:p-8">
         <div className="text-center">
           <MapPin className="mx-auto mb-3 h-9 w-9 text-brand" />
           <h1 className="text-2xl font-extrabold">
             {user && registerBusiness
               ? 'Cadastre sua empresa'
-              : 'Você faz parte do bairro'}
+              : 'Entrar ou criar conta'}
           </h1>
           <p className="mt-2 text-sm text-muted">
             {user && registerBusiness
@@ -162,7 +208,41 @@ export function LoginPage() {
               : 'Salve seus favoritos, compartilhe experiências e conecte-se.'}
           </p>
         </div>
-        {user && registerBusiness ? (
+        {recovery ? (
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setBusy(true)
+              setError('')
+              const password = String(
+                new FormData(e.currentTarget).get('new_password'),
+              )
+              const result = await supabase.auth.updateUser({ password })
+              setBusy(false)
+              if (result.error) setError(authError(result.error.message))
+              else {
+                setRecovery(false)
+                navigate(destination, { replace: true })
+              }
+            }}
+          >
+            <h2 className="text-xl font-extrabold">Definir nova senha</h2>
+            {error && <Notice error>{error}</Notice>}
+            <Field label="Nova senha">
+              <Input
+                type="password"
+                name="new_password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </Field>
+            <Button type="submit" disabled={busy}>
+              Salvar nova senha
+            </Button>
+          </form>
+        ) : user && registerBusiness ? (
           <BusinessRegistrationForm
             onComplete={() => {
               setRegisterBusiness(false)
@@ -185,7 +265,6 @@ export function LoginPage() {
                   className={`rounded-lg py-2 font-bold ${tab === t ? 'bg-white text-brand shadow-sm' : 'text-muted'}`}
                   onClick={() => {
                     setTab(t)
-                    setMethod('password')
                     setError('')
                     setMessage('')
                   }}
@@ -196,6 +275,23 @@ export function LoginPage() {
             </div>
             {error && <Notice error>{error}</Notice>}
             {message && <Notice>{message}</Notice>}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setMessage(
+                  'O login com Google ainda não foi configurado. Use seu e-mail para continuar.',
+                )
+                setError('')
+              }}
+            >
+              Continuar com Google
+            </Button>
+            <div className="flex items-center gap-4 text-sm text-muted">
+              <span className="h-px flex-1 bg-line" />
+              ou continue com e-mail
+              <span className="h-px flex-1 bg-line" />
+            </div>
             <form className="space-y-4" onSubmit={submit}>
               {tab === 'signup' && (
                 <>
@@ -255,7 +351,7 @@ export function LoginPage() {
                   maxLength={254}
                 />
               </Field>
-              {(tab === 'signup' || method === 'password') && (
+              {
                 <Field
                   label="Senha *"
                   hint={
@@ -275,49 +371,85 @@ export function LoginPage() {
                     }
                   />
                 </Field>
-              )}
+              }
               <Button type="submit" disabled={busy} className="w-full">
                 {busy
                   ? 'Aguarde…'
                   : tab === 'signup'
                     ? 'Criar conta'
-                    : method === 'magic'
-                      ? 'Enviar link de acesso'
-                      : 'Entrar'}
+                    : 'Entrar'}
               </Button>
             </form>
             {tab === 'login' && (
               <Button
-                variant="ghost"
-                className="w-full"
-                disabled={busy}
-                onClick={() => {
-                  setMethod(method === 'magic' ? 'password' : 'magic')
-                  setError('')
-                  setMessage('')
-                }}
-              >
-                <Mail size={17} />
-                {method === 'magic'
-                  ? 'Entrar com senha'
-                  : 'Receber link por e-mail'}
-              </Button>
-            )}
-            <div className="border-t border-line pt-4">
-              <Button
                 variant="outline"
                 className="w-full"
                 disabled={busy}
-                onClick={() => {
-                  setMessage(
-                    'O login com Google ainda não foi configurado. Você pode entrar com seu e-mail e senha ou receber um link de acesso.',
-                  )
+                onClick={async () => {
                   setError('')
+                  setMessage('')
+                  if (
+                    !email.trim() ||
+                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+                  ) {
+                    setError('Informe um e-mail válido para receber o link.')
+                    return
+                  }
+                  setBusy(true)
+                  const result = await supabase.auth.signInWithOtp({
+                    email: email.trim(),
+                    options: {
+                      emailRedirectTo: `${window.location.origin}${BASE_PATH}/entrar?retorno=${encodeURIComponent(destination)}`,
+                      shouldCreateUser: false,
+                    },
+                  })
+                  setBusy(false)
+                  if (result.error) setError(authError(result.error.message))
+                  else
+                    setMessage(
+                      'Link de acesso enviado! Confira sua caixa de entrada e o spam.',
+                    )
                 }}
               >
-                Continuar com Google
+                <Mail size={18} />
+                Enviar link de acesso
               </Button>
-            </div>
+            )}
+            {tab === 'login' && (
+              <button
+                type="button"
+                disabled={busy}
+                className="w-full text-sm font-bold text-brand underline"
+                onClick={async () => {
+                  setError('')
+                  if (!email.trim()) {
+                    setError(
+                      'Informe seu e-mail para receber o link de recuperação.',
+                    )
+                    return
+                  }
+                  setBusy(true)
+                  const result = await supabase.auth.resetPasswordForEmail(
+                    email.trim(),
+                    {
+                      redirectTo: `${window.location.origin}${BASE_PATH}/entrar`,
+                    },
+                  )
+                  setBusy(false)
+                  if (result.error) setError(authError(result.error.message))
+                  else
+                    setMessage(
+                      'Enviamos um link para redefinir sua senha. Confira seu e-mail.',
+                    )
+                }}
+              >
+                Esqueci minha senha
+              </button>
+            )}
+            <p className="text-center text-xs text-muted">
+              Ao continuar, você concorda em usar o Guia Local com respeito à
+              comunidade e à privacidade das outras pessoas.
+            </p>
           </>
         )}
         <Link

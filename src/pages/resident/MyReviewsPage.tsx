@@ -1,3 +1,4 @@
+import { uploadReviewPhotos } from '@/lib/review-photos'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
@@ -17,7 +18,7 @@ import { Card } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 const labels: Record<ReviewStatus, string> = {
-  pending: 'Em moderação',
+  pending: 'Em análise',
   published: 'Publicada',
   adjustment_requested: 'Ajuste solicitado',
   removed: 'Removida',
@@ -25,13 +26,14 @@ const labels: Record<ReviewStatus, string> = {
 }
 export function MyReviewsPage() {
   const { user } = useAuth()
+  const [filter, setFilter] = useState('all')
   const [editing, setEditing] = useState<Tables<'reviews'> | null>(null)
   const [deleting, setDeleting] = useState<Tables<'reviews'> | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const resource = useResource(async () => {
-    if (!user) return { reviews: [], businesses: [] }
+    if (!user) return { reviews: [], businesses: [], services: [] }
     const { data: reviews, error } = await supabase
       .from('reviews')
       .select('*')
@@ -47,7 +49,19 @@ export function MyReviewsPage() {
           .eq('is_paused', false)
       : { data: [], error: null }
     if (businesses.error) throw businesses.error
-    return { reviews, businesses: businesses.data ?? [] }
+    const services = reviews.length
+      ? await supabase
+          .from('services')
+          .select('*')
+          .in('business_id', [...new Set(reviews.map((r) => r.business_id))])
+          .eq('active', true)
+      : { data: [], error: null }
+    if (services.error) throw services.error
+    return {
+      reviews,
+      businesses: businesses.data ?? [],
+      services: services.data ?? [],
+    }
   }, [user?.id])
   async function remove() {
     if (!deleting || !user) return
@@ -74,6 +88,21 @@ export function MyReviewsPage() {
       title="Minhas avaliações"
       description="Acompanhe suas contribuições e o retorno das empresas."
     >
+      <div className="flex gap-5 border-b border-line">
+        {[
+          { id: 'all', label: 'Todas' },
+          { id: 'published', label: 'Publicadas' },
+          { id: 'pending', label: 'Em análise' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            className={`border-b-2 px-3 py-3 font-bold ${filter === t.id ? 'border-brand text-brand' : 'border-transparent text-muted'}`}
+            onClick={() => setFilter(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       {error && <Notice error>{error}</Notice>}
       {message && <Notice>{message}</Notice>}
       {resource.loading ? (
@@ -88,87 +117,114 @@ export function MyReviewsPage() {
         </EmptyState>
       ) : (
         <div className="space-y-4">
-          {resource.data.reviews.map((r) => {
-            const b = resource.data?.businesses.find(
-              (b) => b.id === r.business_id,
+          {!resource.data.reviews.some(
+            (r) =>
+              filter === 'all' ||
+              r.status === filter ||
+              (filter === 'pending' && r.status === 'flagged'),
+          ) && <EmptyState title="Nenhuma avaliação nesta aba" />}
+          {resource.data.reviews
+            .filter(
+              (r) =>
+                filter === 'all' ||
+                r.status === filter ||
+                (filter === 'pending' && r.status === 'flagged'),
             )
-            return (
-              <Card key={r.id} className="space-y-3 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  {b ? (
-                    <Link
-                      to={`/empresa/${b.slug}`}
-                      className="text-lg font-bold text-brand"
+            .map((r) => {
+              const b = resource.data?.businesses.find(
+                (b) => b.id === r.business_id,
+              )
+              return (
+                <Card key={r.id} className="space-y-3 p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    {b ? (
+                      <Link
+                        to={`/empresa/${b.slug}`}
+                        className="text-lg font-bold text-brand"
+                      >
+                        {b.name}
+                      </Link>
+                    ) : (
+                      <h2 className="font-bold">Empresa indisponível</h2>
+                    )}
+                    <Badge
+                      tone={r.status === 'published' ? 'success' : 'warning'}
                     >
-                      {b.name}
-                    </Link>
-                  ) : (
-                    <h2 className="font-bold">Empresa indisponível</h2>
-                  )}
-                  <Badge
-                    tone={r.status === 'published' ? 'success' : 'warning'}
-                  >
-                    {labels[r.status]}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted">
-                  {new Date(r.created_at).toLocaleDateString('pt-BR')} ·{' '}
-                  <span
-                    className="text-amber-500"
-                    aria-label={`${r.rating} estrelas`}
-                  >
-                    {'★'.repeat(r.rating)}
-                  </span>
-                </p>
-                {r.title && <h3 className="font-bold">{r.title}</h3>}
-                <p className="whitespace-pre-wrap">{r.body}</p>
-                {r.moderation_notes && (
-                  <Notice>Orientação da moderação: {r.moderation_notes}</Notice>
-                )}
-                {r.reply_text && (
-                  <div className="rounded-xl bg-brand-soft p-4 text-sm">
-                    <p className="font-bold">Resposta da empresa</p>
-                    <p className="mt-1 whitespace-pre-wrap">{r.reply_text}</p>
+                      {labels[r.status]}
+                    </Badge>
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditing(r)}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setError('')
-                      setDeleting(r)
-                    }}
-                  >
-                    Excluir
-                  </Button>
-                </div>
-              </Card>
-            )
-          })}
+                  <p className="text-sm text-muted">
+                    {new Date(r.created_at).toLocaleDateString('pt-BR')} ·{' '}
+                    <span
+                      className="text-amber-500"
+                      aria-label={`${r.rating} estrelas`}
+                    >
+                      {'★'.repeat(r.rating)}
+                    </span>
+                  </p>
+                  {r.title && <h3 className="font-bold">{r.title}</h3>}
+                  <p className="whitespace-pre-wrap">{r.body}</p>
+                  {r.moderation_notes && (
+                    <Notice>
+                      Orientação da moderação: {r.moderation_notes}
+                    </Notice>
+                  )}
+                  {r.reply_text && (
+                    <div className="rounded-xl bg-brand-soft p-4 text-sm">
+                      <p className="font-bold">Resposta da empresa</p>
+                      <p className="mt-1 whitespace-pre-wrap">{r.reply_text}</p>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditing(r)}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setError('')
+                        setDeleting(r)
+                      }}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
+                </Card>
+              )
+            })}
         </div>
       )}
       {editing && (
         <Modal title="Editar avaliação" onClose={() => setEditing(null)}>
           <ReviewForm
             initial={editing}
+            services={resource.data?.services.filter(
+              (s) => s.business_id === editing.business_id,
+            )}
             onCancel={() => setEditing(null)}
-            onSubmit={async (content) => {
+            onSubmit={async (content, photos) => {
               const { error } = await supabase
                 .from('reviews')
                 .update({ ...content, status: 'pending' })
                 .eq('id', editing.id)
                 .eq('user_id', user!.id)
               if (error) throw error
+              const photoFailed = await uploadReviewPhotos(
+                editing.id,
+                user!.id,
+                photos,
+              )
               setEditing(null)
-              setMessage('Alterações enviadas para uma nova análise.')
+              setMessage(
+                photoFailed
+                  ? 'Alterações enviadas para análise, mas algumas fotos não puderam ser anexadas.'
+                  : 'Alterações enviadas para uma nova análise.',
+              )
               resource.reload()
             }}
           />

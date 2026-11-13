@@ -9,11 +9,14 @@ import { Field, Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 export function AccountPage() {
-  const { user, profile, loading, refreshProfile } = useAuth()
+  const { user, profile, loading, refreshProfile, signOut } = useAuth()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [review, setReview] = useState(true)
   const [suggestion, setSuggestion] = useState(true)
+  const [availability, setAvailability] = useState(true)
+  const [weekly, setWeekly] = useState(false)
+  const [city, setCity] = useState('')
   const [marketing, setMarketing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -26,6 +29,9 @@ export function AccountPage() {
       setReview(profile.notify_review_email)
       setSuggestion(profile.notify_suggestion_email)
       setMarketing(profile.notify_marketing_email)
+      setAvailability(profile.notify_availability)
+      setWeekly(profile.notify_weekly_summary)
+      setCity(profile.city_name || 'Uberaba')
     }
   }, [profile])
   async function save(e: FormEvent) {
@@ -46,6 +52,9 @@ export function AccountPage() {
           notify_review_email: review,
           notify_suggestion_email: suggestion,
           notify_marketing_email: marketing,
+          notify_availability: availability,
+          notify_weekly_summary: weekly,
+          city_name: city.trim() || null,
         })
         .eq('id', user.id)
         .select('id')
@@ -106,6 +115,20 @@ export function AccountPage() {
       ) : (
         <>
           <Card className="max-w-2xl p-6">
+            <div className="mb-6 flex items-center gap-4">
+              <span className="avatar !h-16 !w-16 text-xl">
+                {name
+                  .split(' ')
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((n) => n[0])
+                  .join('')}
+              </span>
+              <div>
+                <h2 className="text-xl font-extrabold">{name}</h2>
+                <p className="text-muted">{user?.email}</p>
+              </div>
+            </div>
             <form onSubmit={save} className="space-y-5">
               <Field label="Nome completo *">
                 <Input
@@ -139,6 +162,14 @@ export function AccountPage() {
                   className="bg-canvas"
                 />
               </Field>
+              <Field label="Cidade">
+                <Input
+                  aria-label="Cidade"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  maxLength={100}
+                />
+              </Field>
               <fieldset className="space-y-3 border-t border-line pt-5">
                 <legend className="font-bold">Notificações por e-mail</legend>
                 <label className="flex items-center gap-3 text-sm">
@@ -165,6 +196,22 @@ export function AccountPage() {
                   />
                   Novidades e dicas do Guia Local
                 </label>
+                <label className="flex items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={availability}
+                    onChange={(e) => setAvailability(e.target.checked)}
+                  />
+                  Disponibilidade dos meus negócios favoritos
+                </label>
+                <label className="flex items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={weekly}
+                    onChange={(e) => setWeekly(e.target.checked)}
+                  />
+                  Resumo semanal da minha cidade
+                </label>
               </fieldset>
               <Button type="submit" disabled={busy}>
                 {busy ? 'Salvando…' : 'Salvar alterações'}
@@ -172,7 +219,15 @@ export function AccountPage() {
             </form>
           </Card>
           <Card className="max-w-2xl space-y-4 p-6">
-            <h2 className="text-lg font-bold">Exclusão da conta</h2>
+            <h2 className="text-lg font-bold">Privacidade e acesso</h2>
+            <p className="text-sm text-muted">
+              Seu nome aparece nas avaliações. Seu e-mail e telefone de cadastro
+              ficam privados.
+            </p>
+            <Button variant="outline" onClick={() => void signOut()}>
+              Sair da conta
+            </Button>
+            <h3 className="font-bold">Exclusão da conta</h3>
             {profile.deletion_requested_at ? (
               <Notice>
                 Solicitação registrada em{' '}

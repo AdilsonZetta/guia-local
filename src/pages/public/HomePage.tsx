@@ -1,146 +1,158 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { Search, ArrowRight, MapPin } from 'lucide-react'
-import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Send, UsersRound } from 'lucide-react'
 import { catalog, publicBusinesses, useResource } from '@/lib/public-data'
+import { supabase } from '@/lib/supabase'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { BusinessCard } from '@/components/business/BusinessCard'
-import { Input, Select } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import {
+  BrandTile,
+  Rating,
+  ReceivingChip,
+} from '@/components/business/BusinessIdentity'
+import { SearchBar } from '@/components/SearchBar'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState, LoadError } from '@/components/PageContent'
-
 export function HomePage() {
-  const navigate = useNavigate()
-  const [q, setQ] = useState('')
-  const [bairro, setBairro] = useState('')
   const resource = useResource(async () => {
-    const [refs, businesses] = await Promise.all([
+    const [refs, businesses, settings] = await Promise.all([
       catalog(),
-      publicBusinesses(true),
+      publicBusinesses(),
+      supabase
+        .from('site_settings')
+        .select('city_name')
+        .eq('id', 1)
+        .maybeSingle(),
     ])
-    return { ...refs, businesses }
+    if (settings.error) throw settings.error
+    return {
+      ...refs,
+      businesses: businesses.sort(
+        (a, b) =>
+          Number(b.featured) - Number(a.featured) ||
+          Number(b.slug === 'juliana-limpeza') -
+            Number(a.slug === 'juliana-limpeza'),
+      ),
+      city: settings.data?.city_name || 'Uberaba',
+    }
   })
+  const data = resource.data
+  const featured = data?.businesses[0]
   return (
-    <div className="mx-auto max-w-6xl space-y-12 px-4 py-8 md:py-12">
-      <section className="rounded-3xl bg-brand-soft px-6 py-10 md:p-12">
-        <p className="mb-4 flex items-center gap-2 font-bold text-brand">
-          <MapPin size={18} /> Perto de você, em Uberaba
-        </p>
-        <h1 className="max-w-3xl text-4xl leading-tight font-extrabold text-brand-dark md:text-5xl">
-          Encontre empresas e prestadores de confiança em Uberaba
-        </h1>
-        <p className="mt-4 max-w-xl text-muted">
-          Descubra serviços no seu bairro, conheça avaliações e fale diretamente
-          com quem faz acontecer.
-        </p>
-        <form
-          className="mt-8 grid gap-3 rounded-2xl bg-white p-3 shadow-sm md:grid-cols-[1fr_240px_auto]"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const params = new URLSearchParams()
-            if (q.trim()) params.set('q', q.trim())
-            if (bairro) params.set('bairro', bairro)
-            navigate(`/busca?${params}`)
-          }}
-        >
-          <Input
-            aria-label="Serviço ou nome da empresa"
-            placeholder="Qual serviço você procura?"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+    <>
+      <section className="home-hero">
+        {featured?.cover_url && (
+          <img
+            src={featured.cover_url}
+            alt="Serviços e profissionais da sua cidade"
+            className="hero-photo"
           />
-          <Select
-            aria-label="Bairro"
-            value={bairro}
-            onChange={(e) => setBairro(e.target.value)}
-          >
-            <option value="">Todos os bairros</option>
-            {resource.data?.neighborhoods.map((n) => (
-              <option key={n.id} value={n.slug}>
-                {n.name}
-              </option>
-            ))}
-          </Select>
-          <Button type="submit">
-            <Search size={18} /> Buscar
-          </Button>
-        </form>
+        )}
+        <div className="site-container">
+          <h1 className="hero-title">
+            Encontre quem
+            <br className="hidden md:block" /> resolve, perto de você.
+          </h1>
+          <p className="hero-description">
+            Empresas e profissionais em {data?.city || 'Uberaba'},
+            <br className="hidden md:block" /> com avaliações de clientes.
+          </p>
+          {featured && (
+            <div className="featured-float">
+              <BrandTile business={featured} className="!h-16 !w-16" />
+              <div>
+                <h3 className="font-extrabold">{featured.name}</h3>
+                <p className="text-xs text-muted">
+                  {featured.categories?.name}
+                </p>
+                <div className="my-1">
+                  <Rating
+                    rating={featured.business_stats?.avg_rating}
+                    count={featured.business_stats?.review_count}
+                  />
+                </div>
+                <ReceivingChip business={featured} />
+              </div>
+            </div>
+          )}
+          <SearchBar neighborhoods={data?.neighborhoods || []} />
+        </div>
       </section>
-      {resource.loading ? (
-        <Spinner />
-      ) : resource.error ? (
-        <LoadError message={resource.error} retry={resource.reload} />
-      ) : (
-        <>
-          <section>
-            <h2 className="mb-5 text-2xl font-extrabold">
-              O que você precisa hoje?
-            </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {resource.data?.categories
+      <div className="site-container space-y-5 py-4">
+        {resource.loading ? (
+          <Spinner />
+        ) : resource.error ? (
+          <LoadError message={resource.error} retry={resource.reload} />
+        ) : (
+          <>
+            <section
+              className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+              aria-label="Categorias"
+            >
+              {data?.categories
                 .filter((c) => c.show_on_home)
+                .slice(0, 6)
                 .map((c) => (
                   <Link
                     key={c.id}
-                    to={`/busca?categoria=${encodeURIComponent(c.slug)}`}
+                    to={`/busca?categoria=${c.slug}`}
+                    className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white p-3 text-center transition hover:border-brand"
                   >
-                    <Card className="flex h-full flex-col items-center gap-3 p-5 text-center transition hover:border-brand hover:shadow-md">
-                      <span className="rounded-2xl bg-brand-soft p-3 text-brand">
-                        <CategoryIcon name={c.icon} />
-                      </span>
-                      <span className="text-sm font-bold">{c.name}</span>
-                    </Card>
+                    <CategoryIcon
+                      name={c.icon}
+                      className="h-9 w-9 text-brand"
+                    />
+                    <span>{c.name}</span>
                   </Link>
                 ))}
-            </div>
-            {!resource.data?.categories.some((c) => c.show_on_home) && (
-              <p className="text-muted">
-                Explore todos os serviços pela busca.
-              </p>
-            )}
-          </section>
-          <section>
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-extrabold">Destaques da região</h2>
-              <Link
-                to="/busca"
-                className="flex items-center gap-1 text-sm font-bold text-brand"
-              >
-                Ver todos <ArrowRight size={16} />
-              </Link>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              {resource.data?.businesses.map((b) => (
-                <BusinessCard key={b.id} business={b} source="home" />
-              ))}
-            </div>
-            {!resource.data?.businesses.length && (
-              <EmptyState title="Conheça os negócios da cidade">
-                <Link to="/busca" className="text-brand">
-                  Encontre empresas e serviços na busca.
+            </section>
+            <section>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-2xl font-extrabold md:text-3xl">
+                  Conheça negócios da sua região
+                </h2>
+                <Link
+                  to="/busca"
+                  className="flex shrink-0 items-center gap-2 text-sm text-brand underline"
+                >
+                  Ver empresas <ArrowRight size={18} />
                 </Link>
-              </EmptyState>
-            )}
-          </section>
-        </>
-      )}
-      <section className="flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-brand p-8 text-white">
-        <div>
-          <h2 className="text-2xl font-extrabold">
-            Seu bairro tem uma boa indicação?
-          </h2>
-          <p className="mt-2 text-white/85">
-            Ajude mais pessoas a descobrir os negócios locais.
-          </p>
-        </div>
-        <Link
-          to="/indicar"
-          className="rounded-xl bg-white px-5 py-3 font-bold text-brand"
-        >
-          Indicar empresa
-        </Link>
-      </section>
-    </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {data?.businesses.slice(0, 3).map((b) => (
+                  <BusinessCard
+                    key={b.id}
+                    business={b}
+                    source="home"
+                    city={data.city}
+                  />
+                ))}
+              </div>
+              {!data?.businesses.length && (
+                <EmptyState title="Novos negócios estão chegando">
+                  <Link to="/indicar" className="text-brand">
+                    Indique uma empresa da sua região.
+                  </Link>
+                </EmptyState>
+              )}
+            </section>
+          </>
+        )}
+        <section className="flex flex-wrap items-center gap-5 rounded-xl bg-brand-soft px-6 py-4">
+          <UsersRound size={40} className="text-brand" />
+          <div>
+            <h2 className="text-lg font-extrabold">
+              Conhece um negócio que ainda não está aqui?
+            </h2>
+            <p className="text-muted">
+              Ajude a sua cidade a ficar mais completa.
+            </p>
+          </div>
+          <Link to="/indicar" className="btn-outline ml-auto">
+            <Send size={20} />
+            Indicar empresa
+          </Link>
+        </section>
+      </div>
+    </>
   )
 }

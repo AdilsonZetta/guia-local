@@ -96,6 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadProfile])
 
+  useEffect(() => {
+    const id=session?.user.id
+    if(!id)return
+    const refresh=()=>{void loadProfile(id)}
+    const channel=supabase.channel(`profile-status-${id}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles',filter:`id=eq.${id}`},refresh).subscribe()
+    const timer=window.setInterval(refresh,60000)
+    window.addEventListener('focus',refresh)
+    return ()=>{clearInterval(timer);window.removeEventListener('focus',refresh);void supabase.removeChannel(channel)}
+  },[session?.user.id,loadProfile])
+
   const value = useMemo<AuthContextValue>(() => {
     const role: UserRole | undefined = profile?.role
     return {

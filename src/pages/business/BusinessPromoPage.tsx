@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
+import { Link } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
+import { checked } from '@/lib/management'
 import { useAuth } from '@/context/AuthProvider'
 import { useResource, catalog } from '@/lib/public-data'
 import { PageContent } from '@/components/PageContent'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Textarea, Input } from '@/components/ui/Input'
-import { useAction, publicUrl, share } from '@/lib/management'
+import { useAction, publicUrl } from '@/lib/management'
 import { BusinessGate, ResourceState, Feedback } from '@/components/Management'
 
 export function BusinessPromoPage() {
@@ -24,7 +27,16 @@ function saveCanvas(canvas: HTMLCanvasElement, filename: string) {
 }
 function Promo() {
   const { business: b } = useAuth()
-  const refs = useResource(catalog)
+  const refs = useResource(async () => ({
+    ...(await catalog()),
+    stats: await checked(
+      supabase
+        .from('business_stats')
+        .select('*')
+        .eq('business_id', b!.id)
+        .maybeSingle(),
+    ),
+  }))
   const url = publicUrl(`/empresa/${b!.slug}`)
   const reviewUrl = publicUrl(`/empresa/${b!.slug}/avaliar`)
   const [message, setMessage] = useState(
@@ -38,10 +50,16 @@ function Promo() {
     canvas.height = 680
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Não foi possível gerar a imagem.')
-    ctx.fillStyle = '#f5faf7'
+    ctx.fillStyle = '#e8f7f1'
     ctx.fillRect(0, 0, 1200, 680)
     ctx.fillStyle = '#0F7B5A'
-    ctx.fillRect(0, 0, 1200, 24)
+    ctx.beginPath()
+    ctx.arc(1200, 0, 240, 0, Math.PI * 2)
+    ctx.fillStyle = '#ceefe2'
+    ctx.fill()
+    ctx.fillStyle = '#0F7B5A'
+    ctx.font = 'bold 38px sans-serif'
+    ctx.fillText('● Guia Local', 60, 70)
     if (b!.logo_url) {
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -69,7 +87,12 @@ function Promo() {
       1080,
     )
     ctx.fillText(
-      `WhatsApp: ${b!.whatsapp || 'Consulte nosso perfil'}`,
+      `★ ${Number(refs.data?.stats?.avg_rating ?? 0)
+        .toFixed(1)
+        .replace(
+          '.',
+          ',',
+        )} · ${refs.data?.stats?.review_count ?? 0} avaliações`,
       60,
       420,
       1080,
@@ -77,15 +100,27 @@ function Promo() {
     ctx.font = '24px sans-serif'
     ctx.fillText(url, 60, 505, 1080)
     ctx.font = 'bold 28px sans-serif'
-    ctx.fillText('Guia Local · Perto de você', 60, 600)
+    ctx.fillText('Conheça nossos serviços', 60, 600)
     saveCanvas(canvas, `${b!.slug}-cartao.png`)
   }
   return (
-    <PageContent title="Divulgação">
+    <PageContent
+      title="Divulgação"
+      description="Compartilhe seu negócio e convide clientes a avaliar."
+    >
+      <div className="management-actions">
+        <Link className="btn-outline" to={`/empresa/${b!.slug}`}>
+          Ver perfil público
+        </Link>
+      </div>
       <Feedback action={action} />
       <ResourceState resource={refs}>
         <Card className="p-5 space-y-4">
-          <h2 className="text-lg font-bold">Compartilhe seu perfil</h2>
+          <h2 className="text-lg font-bold">Seu link público</h2>
+          <p className="text-sm text-muted">
+            Compartilhe este link para que as pessoas conheçam seu perfil no
+            Guia Local.
+          </p>
           <Input aria-label="Link do perfil público" readOnly value={url} />
           <div className="flex flex-wrap gap-2">
             <Button
@@ -95,88 +130,145 @@ function Promo() {
             >
               Copiar link
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => void action.run(() => share(url, b!.name))}
-            >
-              Compartilhar
-            </Button>
             <a
               className="inline-flex items-center rounded-xl px-4 bg-brand-soft text-brand-dark font-semibold"
               target="_blank"
               rel="noopener noreferrer"
               href={`https://wa.me/?text=${encodeURIComponent(message)}`}
             >
-              Enviar no WhatsApp
+              Compartilhar no WhatsApp
             </a>
-            <Button variant="outline" onClick={() => void action.run(card)}>
-              Baixar cartão em PNG
-            </Button>
           </div>
         </Card>
-        <Card className="p-5 space-y-4">
-          <h2 className="text-lg font-bold">QR Code para avaliações</h2>
-          <div ref={qr} className="w-fit bg-white p-4">
-            <QRCodeCanvas
-              value={reviewUrl}
-              size={256}
-              marginSize={4}
-              level="M"
-            />
-          </div>
-          <p className="break-all text-sm text-muted">{reviewUrl}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() =>
-                void action.run(async () => {
-                  const canvas = qr.current?.querySelector('canvas')
-                  if (!canvas) throw new Error('QR Code indisponível.')
-                  saveCanvas(canvas, `${b!.slug}-avaliar.png`)
-                })
-              }
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="p-5 space-y-4">
+            <h2>Cartão do seu negócio</h2>
+            <p className="text-sm text-muted">
+              Use esta imagem para divulgar seu negócio nas redes sociais,
+              WhatsApp ou materiais impressos.
+            </p>
+            <div className="bio-page mx-auto rounded-xl bg-brand-soft p-8 min-h-64">
+              <strong className="text-xl">📍 Guia Local</strong>
+              <div className="flex items-center gap-5 my-7">
+                {b!.logo_url && (
+                  <img
+                    className="h-20 w-20 rounded-xl"
+                    src={b!.logo_url}
+                    alt=""
+                  />
+                )}
+                <div>
+                  <h2>{b!.name}</h2>
+                  <p className="text-muted">
+                    {
+                      refs.data?.categories.find((c) => c.id === b!.category_id)
+                        ?.name
+                    }
+                  </p>
+                  <p className="mt-2">
+                    ⭐{' '}
+                    {Number(refs.data?.stats?.avg_rating ?? 0)
+                      .toFixed(1)
+                      .replace('.', ',')}{' '}
+                    · {refs.data?.stats?.review_count ?? 0} avaliações
+                  </p>
+                </div>
+              </div>
+              <p className="border-t border-emerald-100 pt-4 text-center font-bold">
+                Conheça nossos serviços
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() => void action.run(card)}
+              >
+                Baixar imagem
+              </Button>
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() =>
+                  void action.run(() => navigator.clipboard.writeText(url))
+                }
+              >
+                Copiar link
+              </Button>
+            </div>
+          </Card>
+          <Card className="p-5 space-y-4">
+            <h2 className="text-lg font-bold">QR Code de avaliação</h2>
+            <p className="text-sm text-muted">
+              Imprima e compartilhe para que seus clientes acessem seu perfil e
+              deixem uma avaliação.
+            </p>
+            <div
+              ref={qr}
+              className="mx-auto w-fit rounded-xl border border-line bg-white p-4"
             >
-              Baixar QR Code
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                void action.run(async () => {
-                  const canvas = qr.current?.querySelector('canvas')
-                  if (!canvas) throw new Error('QR Code indisponível.')
-                  const popup = window.open(
-                    '',
-                    '_blank',
-                    'width=700,height=800',
-                  )
-                  if (!popup)
-                    throw new Error(
-                      'Permita a abertura da janela de impressão.',
+              <QRCodeCanvas
+                value={reviewUrl}
+                size={200}
+                marginSize={4}
+                level="M"
+              />
+            </div>
+            <p className="break-all text-sm text-muted">{reviewUrl}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() =>
+                  void action.run(async () => {
+                    const canvas = qr.current?.querySelector('canvas')
+                    if (!canvas) throw new Error('QR Code indisponível.')
+                    saveCanvas(canvas, `${b!.slug}-avaliar.png`)
+                  })
+                }
+              >
+                Baixar QR Code
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  void action.run(async () => {
+                    const canvas = qr.current?.querySelector('canvas')
+                    if (!canvas) throw new Error('QR Code indisponível.')
+                    const popup = window.open(
+                      '',
+                      '_blank',
+                      'width=700,height=800',
                     )
-                  popup.document.title = 'Avalie nossa empresa'
-                  const heading = popup.document.createElement('h1')
-                  heading.textContent = `Avalie ${b!.name}`
-                  const img = popup.document.createElement('img')
-                  img.src = canvas.toDataURL()
-                  img.width = 350
-                  const p = popup.document.createElement('p')
-                  p.textContent = reviewUrl
-                  popup.document.body.style.cssText =
-                    'font-family:sans-serif;text-align:center;padding:40px'
-                  popup.document.body.append(heading, img, p)
-                  await img.decode()
-                  popup.focus()
-                  popup.print()
-                })
-              }
-            >
-              Imprimir QR Code
-            </Button>
-          </div>
-        </Card>
+                    if (!popup)
+                      throw new Error(
+                        'Permita a abertura da janela de impressão.',
+                      )
+                    popup.document.title = 'Avalie nossa empresa'
+                    const heading = popup.document.createElement('h1')
+                    heading.textContent = `Avalie ${b!.name}`
+                    const img = popup.document.createElement('img')
+                    img.src = canvas.toDataURL()
+                    img.width = 350
+                    const p = popup.document.createElement('p')
+                    p.textContent = reviewUrl
+                    popup.document.body.style.cssText =
+                      'font-family:sans-serif;text-align:center;padding:40px'
+                    popup.document.body.append(heading, img, p)
+                    await img.decode()
+                    popup.focus()
+                    popup.print()
+                  })
+                }
+              >
+                Imprimir cartão
+              </Button>
+            </div>
+          </Card>
+        </div>
         <Card className="p-5 space-y-4">
-          <Field label="Mensagem de convite">
+          <h2>Mensagem para convidar clientes</h2>
+          <Field label="Use esta mensagem ao comunicar seu perfil a clientes, por WhatsApp ou outros canais.">
             <Textarea
-              rows={6}
+              rows={2}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
@@ -188,6 +280,9 @@ function Promo() {
           >
             Copiar mensagem
           </Button>
+          <p className="text-xs text-muted">
+            Convide clientes a contar experiências reais, sem direcionar a nota.
+          </p>
         </Card>
       </ResourceState>
     </PageContent>

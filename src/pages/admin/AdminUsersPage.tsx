@@ -1,3 +1,4 @@
+import { Link, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthProvider'
 import { useResource } from '@/lib/public-data'
@@ -8,6 +9,7 @@ import {
   Status,
   Feedback,
   TextField,
+  Metrics,
 } from '@/components/Management'
 
 import { PageContent, EmptyState } from '@/components/PageContent'
@@ -19,10 +21,20 @@ export function AdminUsersPage() {
   const [role, setRole] = useState('')
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<string | null>(null)
+  const [params] = useSearchParams()
+  const [selected, setSelected] = useState<string | null>(params.get('id'))
+  const [page, setPage] = useState(1)
   const [reason, setReason] = useState('')
   const action = useAction()
   const resource = useResource(() => all('profiles'))
+  const related = useResource(async () => {
+    const [businesses, reviews, favorites] = await Promise.all([
+      all('businesses'),
+      all('reviews'),
+      all('favorites'),
+    ])
+    return { businesses, reviews, favorites }
+  })
   const rows = resource.data?.filter(
     (p) =>
       (!role || p.role === role) &&
@@ -36,14 +48,46 @@ export function AdminUsersPage() {
     <PageContent title="Usuários">
       <Feedback action={action} />
       <ResourceState resource={resource}>
+        {resource.data && (
+          <Metrics
+            items={[
+              ['Usuários', resource.data.length],
+              [
+                'Ativos',
+                resource.data.filter((p) => p.status === 'active').length,
+              ],
+              [
+                'Suspensos',
+                resource.data.filter((p) => p.status === 'suspended').length,
+              ],
+              [
+                'Responsáveis por negócios',
+                new Set(
+                  related.data?.businesses
+                    .map((b) => b.owner_id)
+                    .filter(Boolean),
+                ).size,
+              ],
+            ]}
+          />
+        )}
         <div className="grid gap-3 sm:grid-cols-3">
           <TextField
             label="Buscar nome, e-mail ou telefone"
             value={search}
-            onChange={setSearch}
+            onChange={(v) => {
+              setSearch(v)
+              setPage(1)
+            }}
           />
           <Field label="Papel">
-            <Select value={role} onChange={(e) => setRole(e.target.value)}>
+            <Select
+              value={role}
+              onChange={(e) => {
+                setRole(e.target.value)
+                setPage(1)
+              }}
+            >
               <option value="">Todos</option>
               <option value="admin">Administrador</option>
               <option value="business">Empresa</option>
@@ -51,7 +95,13 @@ export function AdminUsersPage() {
             </Select>
           </Field>
           <Field label="Status">
-            <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <Select
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value)
+                setPage(1)
+              }}
+            >
               <option value="">Todos</option>
               <option value="active">Ativo</option>
               <option value="suspended">Suspenso</option>
@@ -84,11 +134,12 @@ export function AdminUsersPage() {
                 <th className="p-4">Nome e e-mail</th>
                 <th className="p-4">Papel</th>
                 <th className="p-4">Status</th>
+                <th className="p-4">Negócio vinculado</th>
                 <th className="p-4">Detalhes</th>
               </tr>
             </thead>
             <tbody>
-              {rows?.map((p) => (
+              {rows?.slice((page - 1) * 10, page * 10).map((p) => (
                 <tr className="border-t border-line" key={p.id}>
                   <td className="p-4">
                     <p className="font-bold">{p.full_name || 'Sem nome'}</p>
@@ -102,6 +153,12 @@ export function AdminUsersPage() {
                   </td>
                   <td className="p-4">
                     <Status value={p.status} />
+                  </td>
+                  <td className="p-4">
+                    {related.data?.businesses
+                      .filter((b) => b.owner_id === p.id)
+                      .map((b) => b.name)
+                      .join(', ') || '—'}
                   </td>
                   <td className="p-4">
                     <Button
@@ -119,6 +176,23 @@ export function AdminUsersPage() {
             </tbody>
           </table>
         </Card>
+        <div className="flex justify-end items-center gap-4">
+          <Button
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Anterior
+          </Button>
+          <span className="text-muted text-sm">Página {page}</span>
+          <Button
+            variant="outline"
+            disabled={page * 10 >= (rows?.length ?? 0)}
+            onClick={() => setPage(page + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
       </ResourceState>
       {current && (
         <div
@@ -158,7 +232,30 @@ export function AdminUsersPage() {
                 )}
               </p>
             )}
-            <Field label="Motivo da suspensão">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-brand-soft p-4">
+                <strong>
+                  {related.data?.reviews.filter((r) => r.user_id === current.id)
+                    .length ?? 0}
+                </strong>
+                <p>Avaliações</p>
+              </div>
+              <div className="rounded-xl bg-canvas p-4">
+                <strong>
+                  {related.data?.favorites.filter(
+                    (f) => f.user_id === current.id,
+                  ).length ?? 0}
+                </strong>
+                <p>Favoritos</p>
+              </div>
+            </div>
+            <Link
+              className="text-brand"
+              to={`/admin/avaliacoes?user=${current.id}`}
+            >
+              Ver avaliações →
+            </Link>
+            <Field label="Motivo da alteração">
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -201,7 +298,7 @@ export function AdminUsersPage() {
               }
             >
               {current.status === 'active'
-                ? 'Suspender usuário'
+                ? 'Suspender acesso'
                 : 'Reativar usuário'}
             </Button>
             {current.id === user?.id && (

@@ -31,7 +31,10 @@ export function formatPhone(phone: string | null | undefined) {
   return phone
 }
 
-export function whatsappLink(whatsapp: string | null | undefined, message?: string) {
+export function whatsappLink(
+  whatsapp: string | null | undefined,
+  message?: string,
+) {
   if (!whatsapp) return null
   const digits = whatsapp.replace(/\D/g, '')
   const phone = digits.startsWith('55') ? digits : `55${digits}`
@@ -45,9 +48,17 @@ export function isReceivingNow(business: {
   is_paused: boolean
   status: string
 }) {
-  if (!business.receiving_orders || business.is_paused || business.status !== 'active') return false
+  if (
+    !business.receiving_orders ||
+    business.is_paused ||
+    business.status !== 'active'
+  )
+    return false
   if (!business.receiving_orders_until) return true
-  return business.receiving_orders_until >= new Date().toISOString().slice(0, 10)
+  const until = business.receiving_orders_until
+  if (/^\d{4}-\d{2}-\d{2}$/.test(until))
+    return until >= new Date().toLocaleDateString('en-CA')
+  return new Date(until).getTime() >= Date.now()
 }
 
 export function profileCompleteness(input: {
@@ -78,7 +89,11 @@ export function profileCompleteness(input: {
   return Math.round((checks.filter(Boolean).length / checks.length) * 100)
 }
 
-export function downloadTextFile(filename: string, content: string, mime = 'text/csv;charset=utf-8') {
+export function downloadTextFile(
+  filename: string,
+  content: string,
+  mime = 'text/csv;charset=utf-8',
+) {
   const blob = new Blob([content], { type: mime })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -99,3 +114,24 @@ export const WEEKDAYS = [
 ]
 
 export const BASE_PATH = '/guia-local'
+
+export function businessLocation(
+  business: {
+    location_display: string
+    neighborhoods?: { name: string } | null
+    serviceAreas?: { name: string }[]
+  },
+  city = 'Uberaba',
+) {
+  const areas = business.serviceAreas?.map((n) => n.name).join(', ')
+  if (business.location_display === 'city_only') return `Atende em ${city}`
+  if (business.location_display === 'hidden') return `Atende em ${city}`
+  if (
+    business.location_display &&
+    !['city_regions', 'neighborhood', 'address'].includes(
+      business.location_display,
+    )
+  )
+    return business.location_display
+  return areas || business.neighborhoods?.name || `Atende em ${city}`
+}

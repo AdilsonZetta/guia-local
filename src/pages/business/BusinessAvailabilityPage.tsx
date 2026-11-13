@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthProvider'
 import { useResource } from '@/lib/public-data'
@@ -7,7 +8,7 @@ import type { Tables } from '@/lib/database.types'
 import { PageContent } from '@/components/PageContent'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Input'
+import { Field, Input, Select } from '@/components/ui/Input'
 import { checked, useAction } from '@/lib/management'
 import {
   BusinessGate,
@@ -15,6 +16,8 @@ import {
   Feedback,
   Toggle,
 } from '@/components/Management'
+
+const BUSINESS_WEEKDAYS = [...WEEKDAYS.slice(1), WEEKDAYS[0]!]
 
 export function BusinessAvailabilityPage() {
   return (
@@ -42,7 +45,10 @@ function Availability() {
     return { hours, areas, neighborhoods, settings }
   }, [b?.id])
   return (
-    <PageContent title="Disponibilidade">
+    <PageContent
+      title="Disponibilidade"
+      description="Informe quando você está recebendo novos pedidos."
+    >
       <ResourceState resource={resource}>
         {resource.data && (
           <AvailabilityForm
@@ -71,10 +77,11 @@ function AvailabilityForm({
 }) {
   const { business: b, refreshProfile } = useAuth()
   const action = useAction()
+  const [today] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [receiving, setReceiving] = useState(b!.receiving_orders)
   const [until, setUntil] = useState(b!.receiving_orders_until ?? '')
   const [hours, setHours] = useState<Omit<Tables<'business_hours'>, 'id'>[]>(
-    WEEKDAYS.map((day) =>
+    BUSINESS_WEEKDAYS.map((day) =>
       (() => {
         const existing = data.hours.find((h) => h.weekday === day.value)
         return existing
@@ -96,7 +103,7 @@ function AvailabilityForm({
   const [areas, setAreas] = useState(data.areas.map((a) => a.neighborhood_id))
   return (
     <form
-      className="space-y-5"
+      className="management-page-form space-y-5"
       onSubmit={(e) => {
         e.preventDefault()
         void action.run(async () => {
@@ -161,22 +168,33 @@ function AvailabilityForm({
       }}
     >
       <Feedback action={action} />
-      <Card className="p-5">
-        <Toggle
-          label="Recebendo pedidos"
-          checked={receiving}
-          onChange={(v) => {
-            setReceiving(v)
-            if (v) {
-              const date = new Date()
-              date.setDate(
-                date.getDate() + data.settings.availability_validity_days,
-              )
-              setUntil(date.toLocaleDateString('en-CA'))
-            }
-          }}
-        />
-        <Field label="Disponível até">
+      <div className="management-actions">
+        <Button type="submit" disabled={action.busy}>
+          Salvar alterações
+        </Button>
+      </div>
+      <Card className="p-5 grid gap-8 md:grid-cols-2">
+        <div>
+          <h2>Recebendo novos pedidos</h2>
+          <p className="text-muted mt-2">
+            Mantenha essa informação atualizada para os clientes.
+          </p>
+          <Toggle
+            label="Recebendo pedidos"
+            checked={receiving}
+            onChange={(v) => {
+              setReceiving(v)
+              if (v) {
+                const date = new Date()
+                date.setDate(
+                  date.getDate() + data.settings.availability_validity_days,
+                )
+                setUntil(date.toLocaleDateString('en-CA'))
+              }
+            }}
+          />
+        </div>
+        <Field label="Exibir disponibilidade até">
           <Input
             type="date"
             value={until}
@@ -185,73 +203,126 @@ function AvailabilityForm({
           />
         </Field>
       </Card>
-      <Card className="p-5 space-y-4">
-        <h2 className="font-bold">Horários da semana</h2>
-        {hours.map((h, i) => {
-          function change(patch: Partial<Tables<'business_hours'>>) {
-            setHours((rows) =>
-              rows.map((row, j) => (j === i ? { ...row, ...patch } : row)),
+      <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
+        <Card className="p-5 space-y-4">
+          <h2 className="font-bold">Horários para receber contatos</h2>
+          <div className="hidden sm:grid grid-cols-4 border-y border-line py-3 text-sm text-muted">
+            <span>Dia</span>
+            <span>Atendimento</span>
+            <span>Das</span>
+            <span>Até</span>
+          </div>
+          {hours.map((h, i) => {
+            function change(patch: Partial<Tables<'business_hours'>>) {
+              setHours((rows) =>
+                rows.map((row, j) => (j === i ? { ...row, ...patch } : row)),
+              )
+            }
+            return (
+              <div
+                key={h.weekday}
+                className="grid gap-3 border-b border-line pb-3 sm:grid-cols-4"
+              >
+                <p className="font-semibold">{BUSINESS_WEEKDAYS[i]!.label}</p>
+                <Toggle
+                  label=""
+                  checked={!h.is_closed}
+                  onChange={(v) =>
+                    change({
+                      is_closed: !v,
+                      open_time: h.open_time || '08:00',
+                      close_time: h.close_time || '18:00',
+                    })
+                  }
+                />
+                <Field label="Abre às">
+                  <Input
+                    type="time"
+                    disabled={h.is_closed}
+                    required={!h.is_closed}
+                    value={h.open_time ?? ''}
+                    onChange={(e) => change({ open_time: e.target.value })}
+                  />
+                </Field>
+                <Field label="Fecha às">
+                  <Input
+                    type="time"
+                    disabled={h.is_closed}
+                    required={!h.is_closed}
+                    value={h.close_time ?? ''}
+                    onChange={(e) => change({ close_time: e.target.value })}
+                  />
+                </Field>
+              </div>
             )
-          }
-          return (
-            <div
-              key={h.weekday}
-              className="grid gap-3 border-b border-line pb-3 sm:grid-cols-4"
-            >
-              <p className="font-semibold">{WEEKDAYS[i]!.label}</p>
-              <Toggle
-                label="Fechado"
-                checked={h.is_closed}
-                onChange={(v) =>
-                  change({
-                    is_closed: v,
-                    open_time: h.open_time || '08:00',
-                    close_time: h.close_time || '18:00',
-                  })
-                }
-              />
-              <Field label="Abre às">
-                <Input
-                  type="time"
-                  disabled={h.is_closed}
-                  required={!h.is_closed}
-                  value={h.open_time ?? ''}
-                  onChange={(e) => change({ open_time: e.target.value })}
+          })}
+          <p className="text-sm text-muted">
+            ⓘ Horários de contato. O serviço é combinado pelo WhatsApp.
+          </p>
+        </Card>
+        <div className="space-y-4">
+          <Card className="p-5 space-y-5">
+            <h2>Como aparece no seu perfil</h2>
+            <div className="flex items-center gap-4">
+              {b!.logo_url && (
+                <img
+                  src={b!.logo_url}
+                  alt=""
+                  className="w-16 h-16 rounded-xl"
                 />
-              </Field>
-              <Field label="Fecha às">
-                <Input
-                  type="time"
-                  disabled={h.is_closed}
-                  required={!h.is_closed}
-                  value={h.close_time ?? ''}
-                  onChange={(e) => change({ close_time: e.target.value })}
-                />
-              </Field>
+              )}
+              <strong>{b!.name}</strong>
+              <span className="status-chip receiving">
+                {receiving && until >= today
+                  ? '● Recebendo pedidos'
+                  : 'Consultar disponibilidade'}
+              </span>
             </div>
-          )
-        })}
-      </Card>
-      <Card className="p-5">
-        <h2 className="font-bold">Bairros atendidos</h2>
-        <div className="grid sm:grid-cols-2">
-          {data.neighborhoods.map((n) => (
-            <Toggle
-              key={n.id}
-              label={n.name + (!n.active ? ' (inativo)' : '')}
-              checked={areas.includes(n.id)}
-              onChange={(v) =>
-                setAreas(
-                  v ? [...areas, n.id] : areas.filter((id) => id !== n.id),
-                )
+            <p className="text-muted">Atende no endereço do cliente</p>
+            <p className="text-muted">
+              Confirme os horários do serviço ao entrar em contato.
+            </p>
+            <Link className="btn-outline w-full" to={`/empresa/${b!.slug}`}>
+              Ver perfil público
+            </Link>
+          </Card>
+          <Card className="p-5">
+            <h2 className="font-bold">Regiões atendidas</h2>
+            <p className="mt-2 mb-4 text-muted">
+              Adicione os bairros onde você atende para aparecer nas buscas da
+              sua região.
+            </p>
+            <div className="flex flex-wrap gap-2 my-4">
+              {areas.map((id) => (
+                <button
+                  type="button"
+                  key={id}
+                  className="status-chip bg-slate-100"
+                  onClick={() => setAreas(areas.filter((a) => a !== id))}
+                >
+                  {data.neighborhoods.find((n) => n.id === id)?.name} ×
+                </button>
+              ))}
+            </div>
+            <Select
+              aria-label="Adicionar bairro"
+              value=""
+              onChange={(e) =>
+                setAreas([...new Set([...areas, e.target.value])])
               }
-            />
-          ))}
+            >
+              <option value="">+ Adicionar bairro</option>
+              {data.neighborhoods
+                .filter((n) => n.active && !areas.includes(n.id))
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.name}
+                  </option>
+                ))}
+            </Select>
+          </Card>
         </div>
-      </Card>
-      <Button type="submit" disabled={action.busy}>
-        Salvar disponibilidade
-      </Button>
+      </div>
     </form>
   )
 }

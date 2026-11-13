@@ -1,16 +1,18 @@
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { catalog, publicBusinesses, useResource } from '@/lib/public-data'
 import { logSearch } from '@/lib/analytics'
 import { isReceivingNow, slugify } from '@/lib/utils'
 import { useAuth } from '@/context/AuthProvider'
-import { PageContent, EmptyState, LoadError } from '@/components/PageContent'
-import { Input, Select, Field } from '@/components/ui/Input'
+import { EmptyState, LoadError } from '@/components/PageContent'
+import { Select, Field } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { BusinessCard } from '@/components/business/BusinessCard'
+import { SearchBar } from '@/components/SearchBar'
+import { supabase } from '@/lib/supabase'
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
@@ -19,11 +21,16 @@ export function SearchPage() {
   const [draft, setDraft] = useState(key)
   const logged = useRef('')
   const resource = useResource(async () => {
-    const [refs, businesses] = await Promise.all([
+    const [refs, businesses, settings] = await Promise.all([
       catalog(),
       publicBusinesses(),
+      supabase
+        .from('site_settings')
+        .select('city_name')
+        .eq('id', 1)
+        .maybeSingle(),
     ])
-    return { ...refs, businesses }
+    return { ...refs, businesses, city: settings.data?.city_name || 'Uberaba' }
   })
   useEffect(() => {
     setDraft(key)
@@ -56,7 +63,8 @@ export function SearchPage() {
         (!params.get('categoria') ||
           b.categories?.slug === params.get('categoria')) &&
         (!params.get('bairro') ||
-          b.neighborhoods?.slug === params.get('bairro')) &&
+          b.neighborhoods?.slug === params.get('bairro') ||
+          b.serviceAreas?.some((n) => n.slug === params.get('bairro'))) &&
         (params.get('casa') !== '1' || b.home_service) &&
         (params.get('pedidos') !== '1' || isReceivingNow(b)) &&
         Number(b.business_stats?.avg_rating ?? 0) >=
@@ -116,20 +124,17 @@ export function SearchPage() {
     setPage(1)
   }, [key])
   return (
-    <PageContent
-      title="Encontre o que precisa"
-      description="Empresas e serviços de Uberaba, com a praticidade de buscar por bairro."
-    >
-      <div className="grid items-start gap-6 lg:grid-cols-[270px_1fr]">
+    <div className="site-container space-y-6 py-6">
+      <SearchBar
+        key={key}
+        neighborhoods={resource.data?.neighborhoods || []}
+        query={params.get('q') || ''}
+        neighborhood={params.get('bairro') || ''}
+      />
+      <div className="grid items-start gap-6 lg:grid-cols-[310px_1fr]">
         <Card className="p-5">
+          <h2 className="mb-5 text-2xl font-extrabold">Filtrar resultados</h2>
           <form className="space-y-4" onSubmit={submit}>
-            <Field label="Nome ou serviço">
-              <Input
-                aria-label="Nome ou serviço"
-                value={values.get('q') ?? ''}
-                onChange={(e) => change('q', e.target.value)}
-              />
-            </Field>
             <Field label="Categoria">
               <Select
                 aria-label="Categoria"
@@ -144,9 +149,9 @@ export function SearchPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Bairro">
+            <Field label="Bairro atendido">
               <Select
-                aria-label="Bairro"
+                aria-label="Bairro atendido"
                 value={values.get('bairro') ?? ''}
                 onChange={(e) => change('bairro', e.target.value)}
               >
@@ -164,7 +169,7 @@ export function SearchPage() {
                 checked={values.get('casa') === '1'}
                 onChange={(e) => change('casa', e.target.checked ? '1' : '')}
               />{' '}
-              Atende em casa
+              Atende em domicílio
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -172,31 +177,20 @@ export function SearchPage() {
                 checked={values.get('pedidos') === '1'}
                 onChange={(e) => change('pedidos', e.target.checked ? '1' : '')}
               />{' '}
-              Recebendo pedidos agora
+              Recebendo pedidos
             </label>
-            <Field label="Nota mínima">
+            <Field label="Avaliações">
               <Select
-                aria-label="Nota mínima"
+                aria-label="Avaliações"
                 value={values.get('nota') ?? ''}
                 onChange={(e) => change('nota', e.target.value)}
               >
-                <option value="">Qualquer nota</option>
+                <option value="">Todas as notas</option>
                 {[3, 4, 5].map((n) => (
                   <option key={n} value={n}>
                     {n} estrelas
                   </option>
                 ))}
-              </Select>
-            </Field>
-            <Field label="Ordenar por">
-              <Select
-                aria-label="Ordenar por"
-                value={values.get('ordem') ?? ''}
-                onChange={(e) => change('ordem', e.target.value)}
-              >
-                <option value="">Relevância</option>
-                <option value="nota">Melhor avaliados</option>
-                <option value="recentes">Mais recentes</option>
               </Select>
             </Field>
             <Button type="submit" className="w-full">
@@ -214,6 +208,13 @@ export function SearchPage() {
               Limpar filtros
             </Button>
           </form>
+          <Link
+            to="/indicar"
+            className="mt-6 block rounded-xl bg-brand-soft p-4"
+          >
+            <strong>Não encontrou?</strong>
+            <span className="block text-muted">Indique uma empresa →</span>
+          </Link>
         </Card>
         <div className="space-y-4">
           {resource.loading ? (
@@ -222,19 +223,49 @@ export function SearchPage() {
             <LoadError message={resource.error} retry={resource.reload} />
           ) : (
             <>
-              <p className="text-sm text-muted">
-                {rows.length}{' '}
-                {rows.length === 1
-                  ? 'empresa encontrada'
-                  : 'empresas encontradas'}
-              </p>
-              {rows.slice(0, page * 12).map((b) => (
-                <BusinessCard key={b.id} business={b} />
-              ))}
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-extrabold md:text-4xl">
+                    {params.get('q') || category?.name || 'Empresas e serviços'}{' '}
+                    em {resource.data?.city}
+                  </h1>
+                  <p className="mt-1 text-xl text-muted">
+                    {rows.length} opções para você conhecer
+                  </p>
+                </div>
+                <label className="flex shrink-0 items-center gap-3 whitespace-nowrap text-sm text-muted">
+                  Ordenar por:
+                  <Select
+                    aria-label="Ordenar por"
+                    value={params.get('ordem') || ''}
+                    onChange={(e) => {
+                      const next = new URLSearchParams(params)
+                      next.set('ordem', e.target.value)
+                      setParams(next)
+                    }}
+                  >
+                    <option value="">Relevância</option>
+                    <option value="nota">Melhor avaliados</option>
+                    <option value="recentes">Mais recentes</option>
+                  </Select>
+                </label>
+              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {rows.slice(0, page * 12).map((b) => (
+                  <BusinessCard
+                    key={b.id}
+                    business={b}
+                    city={resource.data?.city}
+                  />
+                ))}
+              </div>
               {!rows.length && (
                 <EmptyState title="Nenhuma empresa encontrada">
                   Tente outro termo ou amplie os filtros para descobrir mais
-                  opções.
+                  opções.{' '}
+                  <Link to="/indicar" className="block text-brand underline">
+                    Indicar empresa
+                  </Link>
                 </EmptyState>
               )}
               {rows.length > page * 12 && (
@@ -246,6 +277,6 @@ export function SearchPage() {
           )}
         </div>
       </div>
-    </PageContent>
+    </div>
   )
 }

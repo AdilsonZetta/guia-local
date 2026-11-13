@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useResource } from '@/lib/public-data'
@@ -11,6 +11,7 @@ import {
   Status,
   Feedback,
   TextField,
+  Metrics,
 } from '@/components/Management'
 
 import { PageContent, EmptyState } from '@/components/PageContent'
@@ -23,22 +24,29 @@ export function AdminBusinessesPage() {
   const [params] = useSearchParams()
   const [tab, setTab] = useState(params.get('status') ?? '')
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('')
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string | null>(params.get('id'))
   const [notes, setNotes] = useState('')
   const [create, setCreate] = useState(false)
   const action = useAction()
   const resource = useResource(async () => {
-    const [businesses, categories, neighborhoods] = await Promise.all([
-      all('businesses'),
-      all('categories'),
-      all('neighborhoods'),
-    ])
+    const [businesses, categories, neighborhoods, profiles, areas] =
+      await Promise.all([
+        all('businesses'),
+        all('categories'),
+        all('neighborhoods'),
+        all('profiles'),
+        all('business_service_areas'),
+      ])
     return {
       businesses: businesses.sort((a, b) =>
         b.created_at.localeCompare(a.created_at),
       ),
       categories,
       neighborhoods,
+      profiles,
+      areas,
     }
   })
   const d = resource.data
@@ -46,6 +54,7 @@ export function AdminBusinessesPage() {
   const rows = d?.businesses.filter(
     (b) =>
       (!tab || b.status === tab) &&
+      (!category || b.category_id === category) &&
       b.name
         .toLocaleLowerCase('pt-BR')
         .includes(search.toLocaleLowerCase('pt-BR')),
@@ -74,9 +83,35 @@ export function AdminBusinessesPage() {
     resource.reload()
   }
   return (
-    <PageContent title="Empresas e prestadores">
+    <PageContent
+      title="Empresas"
+      description="Gerencie os cadastros e conecte negócios aos moradores."
+    >
       <Feedback action={action} />
       <ResourceState resource={resource}>
+        {d && (
+          <Metrics
+            items={[
+              ['Total', d.businesses.length],
+              [
+                'Ativos',
+                d.businesses.filter(
+                  (b) => b.status === 'active' && !b.is_paused,
+                ).length,
+              ],
+              [
+                'Pendentes',
+                d.businesses.filter((b) => b.status === 'pending').length,
+              ],
+              ['Pausados', d.businesses.filter((b) => b.is_paused).length],
+            ]}
+          />
+        )}
+        <div className="management-actions">
+          <Link className="btn-outline" to="/admin/empresas/indicacoes">
+            Indicações
+          </Link>
+        </div>
         <div className="flex flex-wrap gap-2">
           {[
             ['', 'Todos'],
@@ -87,18 +122,43 @@ export function AdminBusinessesPage() {
             <Button
               key={key}
               variant={tab === key ? 'primary' : 'outline'}
-              onClick={() => setTab(key!)}
+              onClick={() => {
+                setTab(key!)
+                setPage(1)
+              }}
             >
               {label}
+              {key === 'pending'
+                ? ` (${d?.businesses.filter((b) => b.status === 'pending').length ?? 0})`
+                : ''}
             </Button>
           ))}
-          <Button onClick={() => setCreate(true)}>Novo cadastro</Button>
+          <Button onClick={() => setCreate(true)}>+ Novo cadastro</Button>
         </div>
         <TextField
           label="Buscar por nome"
           value={search}
-          onChange={setSearch}
+          onChange={(v) => {
+            setSearch(v)
+            setPage(1)
+          }}
         />
+        <Field label="Categoria">
+          <Select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">Todas as categorias</option>
+            {d?.categories.map((c) => (
+              <option value={c.id} key={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         {!rows?.length && <EmptyState title="Nenhuma empresa encontrada" />}
         <Card className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -106,17 +166,42 @@ export function AdminBusinessesPage() {
               <tr>
                 <th className="p-4">Empresa</th>
                 <th className="p-4">Categoria</th>
+                <th className="p-4">Região</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Análise</th>
               </tr>
             </thead>
             <tbody>
-              {rows?.map((b) => (
+              {rows?.slice((page - 1) * 10, page * 10).map((b) => (
                 <tr className="border-t border-line" key={b.id}>
-                  <td className="p-4 font-bold">{b.name}</td>
+                  <td className="p-4 font-bold">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg bg-brand-soft text-brand">
+                        {b.logo_url ? (
+                          <img
+                            className="h-full w-full object-cover"
+                            src={b.logo_url}
+                            alt=""
+                          />
+                        ) : (
+                          b.name[0]
+                        )}
+                      </span>
+                      <div>
+                        {b.name}
+                        <p className="max-w-60 truncate text-xs font-normal text-muted">
+                          {b.description}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
                   <td className="p-4">
                     {d?.categories.find((c) => c.id === b.category_id)?.name ??
                       '—'}
+                  </td>
+                  <td className="p-4">
+                    {d?.neighborhoods.find((n) => n.id === b.neighborhood_id)
+                      ?.name || '—'}
                   </td>
                   <td className="p-4">
                     <Status value={b.status} />
@@ -138,6 +223,25 @@ export function AdminBusinessesPage() {
             </tbody>
           </table>
         </Card>
+        <div className="flex justify-end items-center gap-4">
+          <Button
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-muted">
+            Página {page} de {Math.max(1, Math.ceil((rows?.length ?? 0) / 10))}
+          </span>
+          <Button
+            variant="outline"
+            disabled={page * 10 >= (rows?.length ?? 0)}
+            onClick={() => setPage(page + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
       </ResourceState>
       {current && (
         <div
@@ -152,12 +256,20 @@ export function AdminBusinessesPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between">
-              <h2 className="text-2xl font-bold">{current.name}</h2>
+              <h2 className="text-2xl font-bold">Analisar cadastro</h2>
               <Button variant="ghost" onClick={() => setSelected(null)}>
                 Fechar
               </Button>
             </div>
             <Feedback action={action} />
+            {current.cover_url && (
+              <img
+                className="h-40 w-full rounded-xl object-cover"
+                src={current.cover_url}
+                alt="Capa"
+              />
+            )}
+            <h2>{current.name}</h2>
             <Status value={current.status} />
             {current.logo_url && (
               <img
@@ -179,11 +291,23 @@ export function AdminBusinessesPage() {
                 ],
                 ['Descrição', current.description],
                 ['Endereço', current.address],
+                [
+                  'Atendimento',
+                  current.attendance_type === 'client_address'
+                    ? 'No endereço do cliente'
+                    : current.attendance_type === 'both'
+                      ? 'Ambos'
+                      : 'No endereço do negócio',
+                ],
                 ['WhatsApp', current.whatsapp],
                 ['Telefone', current.phone],
                 ['E-mail', current.email],
                 ['Site', current.website],
-                ['Responsável (ID)', current.owner_id],
+                [
+                  'Responsável',
+                  d?.profiles.find((p) => p.id === current.owner_id)
+                    ?.full_name || 'Não vinculado',
+                ],
                 [
                   'Cadastro',
                   new Date(current.created_at).toLocaleString('pt-BR'),
@@ -197,6 +321,49 @@ export function AdminBusinessesPage() {
                 </div>
               ))}
             </dl>
+            <div className="flex flex-wrap gap-2">
+              {d?.areas
+                .filter((a) => a.business_id === current.id)
+                .map((a) => (
+                  <span
+                    className="status-chip receiving"
+                    key={a.neighborhood_id}
+                  >
+                    {
+                      d.neighborhoods.find((n) => n.id === a.neighborhood_id)
+                        ?.name
+                    }
+                  </span>
+                ))}
+            </div>
+            {(['contact_verified', 'owner_verified'] as const).map((key) => (
+              <label className="flex items-center gap-3" key={key}>
+                <input
+                  type="checkbox"
+                  disabled={action.busy}
+                  checked={current[key]}
+                  onChange={(e) => {
+                    const value = e.target.checked
+                    void action.run(async () => {
+                      await checked(
+                        supabase
+                          .from('businesses')
+                          .update(
+                            key === 'contact_verified'
+                              ? { contact_verified: value }
+                              : { owner_verified: value },
+                          )
+                          .eq('id', current.id),
+                      )
+                      resource.reload()
+                    })
+                  }}
+                />
+                {key === 'contact_verified'
+                  ? 'Contato conferido'
+                  : 'Responsável confirmado'}
+              </label>
+            ))}
             {current.adjustment_notes && (
               <p className="bg-brand-soft p-3 rounded-xl">
                 Orientações atuais: {current.adjustment_notes}
@@ -212,7 +379,7 @@ export function AdminBusinessesPage() {
             <div className="flex flex-wrap gap-2">
               {(
                 [
-                  ['active', 'Aprovar'],
+                  ['active', 'Aprovar cadastro'],
                   ['adjustments_requested', 'Solicitar ajustes'],
                   ['rejected', 'Rejeitar'],
                   ['archived', 'Arquivar'],

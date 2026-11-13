@@ -1,5 +1,6 @@
+import { WhatsAppIcon } from '@/components/WhatsAppIcon'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowUpRight, MapPin, MessageCircle } from 'lucide-react'
+import { MapPin, Share2, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   isWhatsAppUrl,
@@ -9,6 +10,13 @@ import {
 } from '@/lib/public-data'
 import { logWhatsAppClick } from '@/lib/analytics'
 import { useAuth } from '@/context/AuthProvider'
+import { CategoryIcon } from '@/components/CategoryIcon'
+import {
+  BrandTile,
+  Rating,
+  ReceivingChip,
+} from '@/components/business/BusinessIdentity'
+import { useState } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState, LoadError } from '@/components/PageContent'
 
@@ -16,6 +24,7 @@ const themes: Record<
   string,
   { background: string; card: string; accent: string }
 > = {
+  dark: { background: '#053e30', card: '#0F7B5A', accent: '#ffffff' },
   forest: { background: '#e8f3ed', card: '#0F7B5A', accent: '#164c39' },
   rose: { background: '#fff0f3', card: '#a93862', accent: '#702844' },
   ocean: { background: '#e9f5fc', card: '#126b91', accent: '#154b65' },
@@ -24,6 +33,7 @@ const themes: Record<
 export function LinkInBioPage() {
   const { slug = '' } = useParams()
   const { user } = useAuth()
+  const [shareMessage, setShareMessage] = useState('')
   const resource = useResource(async () => {
     const [settings, link] = await Promise.all([
       supabase
@@ -84,48 +94,82 @@ export function LinkInBioPage() {
   const theme = themes[link.theme] ?? themes.forest
   return (
     <main
-      className="flex min-h-svh justify-center px-5 py-12"
+      className="bio-page relative flex min-h-svh justify-center overflow-hidden px-5 py-12"
       style={{ backgroundColor: theme.background, color: theme.accent }}
     >
-      <div className="w-full max-w-sm text-center">
-        {business.logo_url ? (
-          <img
-            src={business.logo_url}
-            alt={business.name}
-            className="mx-auto mb-5 h-24 w-24 rounded-full border-4 border-white object-cover shadow-sm"
-          />
-        ) : (
-          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-white text-3xl font-extrabold shadow-sm">
-            {business.name.slice(0, 1)}
-          </div>
+      <div className="relative z-10 w-full max-w-xl py-8 text-center">
+        <button
+          aria-label="Compartilhar página"
+          className="bio-share"
+          onClick={async () => {
+            try {
+              if (navigator.share)
+                await navigator.share({
+                  title: business.name,
+                  url: window.location.href,
+                })
+              else {
+                await navigator.clipboard.writeText(window.location.href)
+                setShareMessage('Link copiado!')
+              }
+            } catch (err) {
+              if (!(err instanceof DOMException && err.name === 'AbortError'))
+                setShareMessage(
+                  'Copie o endereço desta página para compartilhar.',
+                )
+            }
+          }}
+        >
+          <Share2 size={28} />
+        </button>
+        {shareMessage && (
+          <p role="status" className="mb-4 text-sm">
+            {shareMessage}
+          </p>
         )}
-        <h1 className="text-2xl font-extrabold">
+        <BrandTile business={business} className="bio-logo" />
+        <h1 style={link.theme==='dark'?{color:theme.accent}:undefined} className="mt-5 text-4xl font-extrabold text-ink md:text-5xl">
           {link.headline || business.name}
         </h1>
         {link.bio && (
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+          <p style={link.theme==='dark'?{color:theme.accent}:undefined} className="mt-3 whitespace-pre-wrap text-2xl leading-snug text-muted">
             {link.bio}
           </p>
         )}
-        {business.neighborhoods && (
-          <p className="mt-4 flex items-center justify-center gap-1 text-xs">
-            <MapPin size={14} />
-            {business.neighborhoods.name} · Uberaba
-          </p>
-        )}
+        <div className="mt-5 text-xl">
+          <Rating
+            rating={business.business_stats?.avg_rating}
+            count={business.business_stats?.review_count}
+          />
+        </div>
+        <div className="mt-3">
+          <ReceivingChip business={business} />
+        </div>
         <div className="mt-8 space-y-3">
           {buttons.map((button) => {
-            const url = safeExternalUrl(button.url)
+            const url = safeExternalUrl(
+              button.url.startsWith('/')
+                ? new URL(button.url, window.location.origin).href
+                : button.url,
+            )
             if (!url) return null
             const whatsapp = isWhatsAppUrl(url)
             return (
               <a
                 key={button.id}
                 href={url}
-                target="_blank"
+                target={
+                  url.startsWith(window.location.origin + '/')
+                    ? undefined
+                    : '_blank'
+                }
                 rel="noopener noreferrer"
-                style={{ backgroundColor: theme.card }}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-5 py-4 font-bold text-white shadow-sm transition hover:-translate-y-0.5"
+                style={{
+                  backgroundColor: whatsapp ? theme.card : 'white',
+                  color: whatsapp ? 'white' : theme.accent,
+                  borderColor: theme.card,
+                }}
+                className="flex min-h-20 items-center justify-between gap-4 rounded-2xl border-2 px-6 py-5 text-xl font-extrabold shadow-sm transition hover:-translate-y-0.5"
                 onClick={() => {
                   if (whatsapp)
                     void logWhatsAppClick({
@@ -136,24 +180,27 @@ export function LinkInBioPage() {
                 }}
               >
                 {whatsapp ? (
-                  <MessageCircle size={20} />
+                  <WhatsAppIcon size={20} />
                 ) : (
-                  <ArrowUpRight size={20} />
+                  <CategoryIcon name={button.icon} className="h-7 w-7" />
                 )}
                 <span className="flex-1">{button.label}</span>
-                <ArrowUpRight size={16} />
+                <ChevronRight size={25} />
               </a>
             )
           })}
         </div>
         <Link
           to={`/empresa/${business.slug}`}
-          className="mt-8 inline-block text-sm font-bold underline underline-offset-4"
+          className="mt-8 inline-block text-xl font-bold underline underline-offset-4"
         >
-          Ver perfil e avaliações
+          Ver perfil completo
         </Link>
-        <Link to="/" className="mt-12 block text-xs opacity-75">
-          Feito para conectar · Guia Local
+        <Link
+          to="/"
+          className="mt-12 flex items-center justify-center gap-2 text-2xl font-extrabold"
+        >
+          <MapPin size={32} className="fill-brand text-brand" /> Guia Local
         </Link>
       </div>
     </main>

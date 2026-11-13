@@ -1,16 +1,28 @@
 import { useState } from 'react'
-import { ArrowUpRight, MessageCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { QRCodeCanvas } from 'qrcode.react'
+import {
+  GripVertical,
+  Pencil,
+  Plus,
+  Home,
+  Star,
+  MapPin,
+  Link2,
+} from 'lucide-react'
 import { useAuth } from '@/context/AuthProvider'
 import { useResource, safeExternalUrl, isWhatsAppUrl } from '@/lib/public-data'
 import { supabase } from '@/lib/supabase'
 import type { Tables } from '@/lib/database.types'
-import { slugify } from '@/lib/utils'
+import { slugify, isReceivingNow } from '@/lib/utils'
 import { PageContent, Notice } from '@/components/PageContent'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { Field, Select, Textarea } from '@/components/ui/Input'
+import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
-import { checked, useAction, publicUrl } from '@/lib/management'
+import { WhatsAppIcon } from '@/components/WhatsAppIcon'
+import { CategoryIcon } from '@/components/CategoryIcon'
+import { checked, useAction, publicUrl, upload } from '@/lib/management'
 import {
   BusinessGate,
   ResourceState,
@@ -19,16 +31,21 @@ import {
   Toggle,
   Reorder,
 } from '@/components/Management'
-
 const themes = {
   forest: {
-    name: 'Floresta',
-    background: '#e8f3ed',
+    name: 'Claro',
+    background: '#f2faf6',
     card: '#0F7B5A',
-    accent: '#164c39',
+    accent: '#0e1536',
+  },
+  dark: {
+    name: 'Escuro',
+    background: '#053e30',
+    card: '#0F7B5A',
+    accent: '#ffffff',
   },
   rose: {
-    name: 'Rosa',
+    name: 'Personalizado',
     background: '#fff0f3',
     card: '#a93862',
     accent: '#702844',
@@ -46,6 +63,28 @@ const themes = {
     accent: '#62472c',
   },
 }
+type DraftButton = {
+  id?: string
+  key: string
+  label: string
+  url: string
+  icon: string
+  enabled: boolean
+  sort_order: number
+}
+function ButtonIcon({ button }: { button: Pick<DraftButton, 'icon' | 'url'> }) {
+  return isWhatsAppUrl(button.url) ? (
+    <WhatsAppIcon size={24} />
+  ) : button.icon === 'instagram' ? (
+    <span className="text-xl text-fuchsia-500">◎</span>
+  ) : button.icon === 'star' ? (
+    <Star size={24} />
+  ) : button.icon === 'link' ? (
+    <Link2 size={24} />
+  ) : (
+    <CategoryIcon name={button.icon} />
+  )
+}
 export function BusinessLinkInBioPage() {
   return (
     <BusinessGate>
@@ -56,13 +95,25 @@ export function BusinessLinkInBioPage() {
 function LinkEditor() {
   const { business: b } = useAuth()
   const resource = useResource(async () => {
-    const link = await checked(
-      supabase
-        .from('link_in_bio')
-        .select('*')
-        .eq('business_id', b!.id)
-        .maybeSingle(),
-    )
+    const [link, settings, stats] = await Promise.all([
+      checked(
+        supabase
+          .from('link_in_bio')
+          .select('*')
+          .eq('business_id', b!.id)
+          .maybeSingle(),
+      ),
+      checked(
+        supabase.from('site_settings').select('link_in_bio_enabled').single(),
+      ),
+      checked(
+        supabase
+          .from('business_stats')
+          .select('*')
+          .eq('business_id', b!.id)
+          .maybeSingle(),
+      ),
+    ])
     const buttons = link
       ? await checked(
           supabase
@@ -73,13 +124,13 @@ function LinkEditor() {
             .order('id'),
         )
       : []
-    const settings = await checked(
-      supabase.from('site_settings').select('link_in_bio_enabled').single(),
-    )
-    return { link, buttons, settings }
+    return { link, buttons, settings, stats }
   }, [b?.id])
   return (
-    <PageContent title="Link na bio">
+    <PageContent
+      title="Link na bio"
+      description="Seus contatos, serviços e avaliações em um único link."
+    >
       <ResourceState resource={resource}>
         {resource.data && (
           <LinkForm
@@ -102,259 +153,404 @@ function LinkForm({
     link: Tables<'link_in_bio'> | null
     buttons: Tables<'link_in_bio_buttons'>[]
     settings: { link_in_bio_enabled: boolean }
+    stats: { avg_rating: number | null; review_count: number | null } | null
   }
   reload: () => void
 }) {
-  const [form, setForm] = useState(
-    initial.link ?? {
-      business_id: b.id,
-      slug: b.slug,
-      headline: b.name,
-      bio: '',
-      theme: 'forest',
-      enabled: true,
-    },
+  const { refreshProfile } = useAuth()
+  const [form, setForm] = useState({
+    slug: initial.link?.slug || b.slug,
+    headline: initial.link?.headline || b.name,
+    bio: initial.link?.bio || '',
+    theme: initial.link?.theme || 'forest',
+    enabled: initial.link?.enabled ?? true,
+  })
+  const [logo, setLogo] = useState(b.logo_url)
+  const [buttons, setButtons] = useState<DraftButton[]>(
+    initial.buttons.map((button) => ({ ...button, key: button.id })),
   )
-  const [edit, setEdit] = useState<Partial<
-    Tables<'link_in_bio_buttons'>
-  > | null>(null)
+  const [edit, setEdit] = useState<DraftButton | null>(null)
+  const [qr, setQr] = useState(false)
   const action = useAction()
   const theme = themes[form.theme as keyof typeof themes] ?? themes.forest
+  function move(index: number, dir: number) {
+    setButtons((rows) => {
+      const next = [...rows]
+      ;[next[index], next[index + dir]] = [next[index + dir]!, next[index]!]
+      return next
+    })
+  }
+  const logoTile = (
+    <span
+      className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white"
+      style={{ background: b.brand_color || '#ff7d85' }}
+    >
+      {logo ? (
+        <img src={logo} alt="Logo" className="h-full w-full object-cover" />
+      ) : (
+        <Home size={52} />
+      )}
+    </span>
+  )
   return (
     <>
       <Feedback action={action} />
       {!initial.settings.link_in_bio_enabled && (
         <Notice>
-          O administrador desativou temporariamente o link na bio. Você ainda
-          pode preparar sua página.
+          O link na bio está temporariamente desativado. Você pode preparar sua
+          página.
         </Notice>
       )}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-5">
-          <Card className="p-5">
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault()
-                void action.run(async () => {
-                  if (!form.slug.trim()) throw new Error('Informe um endereço.')
-                  await checked(
-                    supabase
-                      .from('link_in_bio')
-                      .upsert(
-                        { ...form, slug: slugify(form.slug) },
-                        { onConflict: 'business_id' },
-                      ),
-                  )
-                  reload()
-                })
-              }}
-            >
-              <TextField
-                label="Endereço personalizado"
-                required
-                value={form.slug}
-                onChange={(v) => setForm({ ...form, slug: slugify(v) })}
-              />
-              <p className="text-sm break-all text-brand">
-                {publicUrl(`/l/${form.slug}`)}
-              </p>
-              <TextField
-                label="Título"
-                value={form.headline}
-                onChange={(v) => setForm({ ...form, headline: v })}
-              />
-              <Field label="Apresentação">
-                <Textarea
-                  value={form.bio ?? ''}
-                  onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                />
-              </Field>
-              <Field label="Tema">
-                <Select
-                  value={form.theme}
-                  onChange={(e) => setForm({ ...form, theme: e.target.value })}
-                >
-                  {Object.entries(themes).map(([key, t]) => (
-                    <option value={key} key={key}>
-                      {t.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Toggle
-                label="Página habilitada"
-                checked={form.enabled}
-                onChange={(v) => setForm({ ...form, enabled: v })}
-              />
-              <Button type="submit" disabled={action.busy}>
-                Salvar página
-              </Button>
-            </form>
-          </Card>
-          <Button
-            disabled={!initial.link}
-            onClick={() =>
-              setEdit({
-                label: '',
-                url: '',
-                icon: 'link',
-                enabled: true,
-                sort_order: initial.buttons.length,
-              })
-            }
-          >
-            Adicionar botão
-          </Button>
-          {!initial.link && (
-            <p className="text-muted">Salve a página para adicionar botões.</p>
-          )}
-          {initial.buttons.map((button, i) => (
-            <Card className="p-4 space-y-2" key={button.id}>
-              <p className="font-bold">
-                {button.label} {!button.enabled && '(Desativado)'}
-              </p>
-              <p className="break-all text-sm text-muted">{button.url}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => setEdit(button)}>
-                  Editar
-                </Button>
-                <Toggle
-                  label="Habilitado"
-                  checked={button.enabled}
-                  disabled={action.busy}
-                  onChange={(v) =>
-                    void action.run(async () => {
-                      await checked(
-                        supabase
-                          .from('link_in_bio_buttons')
-                          .update({ enabled: v })
-                          .eq('id', button.id),
-                      )
-                      reload()
-                    })
-                  }
-                />
-                <Reorder
-                  index={i}
-                  total={initial.buttons.length}
-                  disabled={action.busy}
-                  onMove={(dir) =>
-                    void action.run(async () => {
-                      const rows = [...initial.buttons]
-                      ;[rows[i], rows[i + dir]] = [rows[i + dir]!, rows[i]!]
-                      for (let j = 0; j < rows.length; j++)
-                        await checked(
-                          supabase
-                            .from('link_in_bio_buttons')
-                            .update({ sort_order: j })
-                            .eq('id', rows[j]!.id),
-                        )
-                      reload()
-                    })
-                  }
-                />
-                <Button
-                  variant="danger"
-                  disabled={action.busy}
-                  onClick={() => {
-                    if (window.confirm('Excluir este botão?'))
-                      void action.run(async () => {
-                        await checked(
-                          supabase
-                            .from('link_in_bio_buttons')
-                            .delete()
-                            .eq('id', button.id),
-                        )
-                        reload()
-                      })
-                  }}
-                >
-                  Excluir
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-        <div className="mx-auto w-full max-w-sm self-start lg:sticky lg:top-6">
-          <h2 className="mb-3 font-bold">Prévia no celular</h2>
-          <div
-            className="min-h-[600px] rounded-[2.8rem] border-8 border-ink p-6 text-center"
-            style={{ background: theme.background, color: theme.accent }}
-          >
-            {b.logo_url ? (
-              <img
-                src={b.logo_url}
-                alt={b.name}
-                className="mx-auto h-24 w-24 rounded-full object-cover"
-              />
-            ) : (
-              <div className="mx-auto h-24 w-24 rounded-full bg-card grid place-items-center text-3xl">
-                {b.name[0]}
-              </div>
-            )}
-            <h2 className="mt-5 text-2xl font-bold">
-              {form.headline || b.name}
-            </h2>
-            <p className="my-5 whitespace-pre-wrap">{form.bio}</p>
-            {initial.buttons
-              .filter((button) => button.enabled)
-              .map((button) => (
-                <div
-                  key={button.id}
-                  className="my-3 flex items-center gap-2 rounded-2xl p-4 text-white"
-                  style={{ background: theme.card }}
-                >
-                  {isWhatsAppUrl(button.url) ? (
-                    <MessageCircle size={20} />
-                  ) : (
-                    <ArrowUpRight size={20} />
-                  )}
-                  <span className="flex-1 font-bold">{button.label}</span>
-                </div>
-              ))}
-            <p className="mt-8 underline">Ver perfil e avaliações</p>
-            <p className="mt-12 text-xs">Feito para conectar · Guia Local</p>
-          </div>
-        </div>
+      <div className="management-actions">
+        <Link className="btn-outline" to={`/l/${form.slug}`}>
+          Ver página
+        </Link>
+        <Button type="submit" form="bio-form" disabled={action.busy}>
+          <Pencil size={18} />
+          Publicar alterações
+        </Button>
       </div>
-      {edit && (
-        <Modal title="Editar botão" onClose={() => setEdit(null)}>
+      <Card className="flex flex-wrap items-center gap-4 p-4">
+        <strong>Seu endereço personalizado</strong>
+        <div className="flex min-w-40 flex-1 items-center rounded-lg border border-line bg-canvas px-4">
+          <span>/l/</span>
+          <input
+            aria-label="Endereço personalizado"
+            className="min-w-0 flex-1 bg-transparent py-3 outline-none"
+            value={form.slug}
+            onChange={(e) =>
+              setForm({ ...form, slug: slugify(e.target.value) })
+            }
+          />
+          <Pencil size={17} />
+        </div>
+        <Button
+          variant="outline"
+          onClick={() =>
+            void action.run(() =>
+              navigator.clipboard.writeText(publicUrl(`/l/${form.slug}`)),
+            )
+          }
+        >
+          Copiar link
+        </Button>
+        <Button variant="outline" onClick={() => setQr(true)}>
+          QR Code
+        </Button>
+      </Card>
+      <div className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">
+        <Card className="p-5">
           <form
-            className="space-y-3"
+            id="bio-form"
+            className="space-y-5"
             onSubmit={(e) => {
               e.preventDefault()
               void action.run(async () => {
-                if (!safeExternalUrl(edit.url ?? ''))
-                  throw new Error(
-                    'Use um endereço https://, http://, tel: ou mailto: válido.',
-                  )
-                const values = { ...edit, link_id: initial.link!.id }
-                if (edit.id)
+                if (!form.slug.trim() || !form.headline.trim())
+                  throw new Error('Informe o endereço e o nome da página.')
+                const link = await checked(
+                  supabase
+                    .from('link_in_bio')
+                    .upsert(
+                      { ...form, slug: slugify(form.slug), business_id: b.id },
+                      { onConflict: 'business_id' },
+                    )
+                    .select('id')
+                    .single(),
+                )
+                const removed = initial.buttons.filter(
+                  (button) => !buttons.some((draft) => draft.id === button.id),
+                )
+                for (const button of removed)
                   await checked(
                     supabase
                       .from('link_in_bio_buttons')
-                      .update(values)
-                      .eq('id', edit.id),
+                      .delete()
+                      .eq('id', button.id)
+                      .eq('link_id', link.id),
                   )
-                else
+                for (let i = 0; i < buttons.length; i++) {
+                  const button = buttons[i]!
+                  const values = {
+                    link_id: link.id,
+                    label: button.label,
+                    url: button.url,
+                    icon: button.icon,
+                    enabled: button.enabled,
+                    sort_order: i,
+                  }
+                  if (button.id)
+                    await checked(
+                      supabase
+                        .from('link_in_bio_buttons')
+                        .update(values)
+                        .eq('id', button.id)
+                        .eq('link_id', link.id),
+                    )
+                  else {
+                    const created = await checked(
+                      supabase
+                        .from('link_in_bio_buttons')
+                        .insert(values)
+                        .select('id')
+                        .single(),
+                    )
+                    setButtons((rows) =>
+                      rows.map((row) =>
+                        row.key === button.key
+                          ? { ...row, id: created.id }
+                          : row,
+                      ),
+                    )
+                  }
+                }
+                if (logo !== b.logo_url) {
                   await checked(
-                    supabase.from('link_in_bio_buttons').insert(values),
+                    supabase
+                      .from('businesses')
+                      .update({ logo_url: logo })
+                      .eq('id', b.id),
                   )
-                setEdit(null)
+                  await refreshProfile()
+                }
                 reload()
-              })
+              }, 'Página publicada.')
             }}
           >
+            <h2>Personalize sua página</h2>
+            <div className="flex gap-6">
+              <div className="space-y-2">
+                {logoTile}
+                <label className="cursor-pointer text-xs text-brand">
+                  Alterar imagem
+                  <Input
+                    className="hidden"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={action.busy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file)
+                        void action.run(async () => {
+                          const image = await upload(
+                            file,
+                            'business-photos',
+                            b.id,
+                          )
+                          setLogo(image.url)
+                        }, 'Imagem preparada. Publique para salvar.')
+                    }}
+                  />
+                </label>
+              </div>
+              <div className="flex-1 space-y-4">
+                <TextField
+                  label="Nome"
+                  required
+                  value={form.headline}
+                  onChange={(v) => setForm({ ...form, headline: v })}
+                />
+                <TextField
+                  label="Descrição curta"
+                  value={form.bio}
+                  onChange={(v) => setForm({ ...form, bio: v })}
+                />
+              </div>
+            </div>
+            <div>
+              <h2>Botões da página</h2>
+              <p className="mb-3 text-sm text-muted">
+                Use as setas para reorganizar.
+              </p>
+              <div className="space-y-2">
+                {buttons.map((button, i) => (
+                  <div
+                    key={button.key}
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-line px-3 py-2"
+                  >
+                    <GripVertical size={18} className="text-muted" />
+                    <span className="text-brand">
+                      <ButtonIcon button={button} />
+                    </span>
+                    <span className="flex-1 text-sm">{button.label}</span>
+                    <button
+                      type="button"
+                      aria-label={`Editar ${button.label}`}
+                      onClick={() => setEdit({ ...button })}
+                    >
+                      <Pencil size={17} />
+                    </button>
+                    <Reorder
+                      index={i}
+                      total={buttons.length}
+                      onMove={(dir) => move(i, dir)}
+                    />
+                    <Toggle
+                      label=""
+                      checked={button.enabled}
+                      onChange={(value) =>
+                        setButtons((rows) =>
+                          rows.map((row) =>
+                            row.key === button.key
+                              ? { ...row, enabled: value }
+                              : row,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full"
+                onClick={() =>
+                  setEdit({
+                    key: crypto.randomUUID(),
+                    label: '',
+                    url: '',
+                    icon: 'link',
+                    enabled: true,
+                    sort_order: buttons.length,
+                  })
+                }
+              >
+                <Plus size={20} />
+                Adicionar botão
+              </Button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
+              <div>
+                <h2>Aparência</h2>
+                <p className="mt-1 text-sm text-muted">
+                  Escolha as cores que combinam com seu negócio.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {(['forest', 'dark', 'rose'] as const).map((key) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={`rounded-lg border p-1.5 text-left ${form.theme === key ? 'border-brand' : 'border-transparent'}`}
+                    onClick={() => setForm({ ...form, theme: key })}
+                  >
+                    <span
+                      className="bio-page block h-14 rounded-md"
+                      style={{ backgroundColor: themes[key].background }}
+                    />
+                    <span className="text-xs">
+                      {themes[key].name} {form.theme === key ? '✓' : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Toggle
+              label="Página habilitada"
+              checked={form.enabled}
+              onChange={(v) => setForm({ ...form, enabled: v })}
+            />
+          </form>
+        </Card>
+        <Card className="p-5 self-start">
+          <h2 className="mb-4">Prévia no celular</h2>
+          <div
+            className="phone-preview bio-page relative mx-auto max-w-76 rounded-[2.8rem] border-8 border-neutral-800 px-3 pb-6 pt-11 text-center"
+            style={{ backgroundColor: theme.background, color: theme.accent }}
+          >
+            <div className="flex justify-center">{logoTile}</div>
+            <h3 className="mt-3 text-xl font-extrabold">
+              {form.headline || b.name}
+            </h3>
+            <p className="mt-1 text-sm opacity-80">{form.bio}</p>
+            <p className="mt-2 text-xs">
+              ⭐{' '}
+              {Number(initial.stats?.avg_rating ?? 0)
+                .toFixed(1)
+                .replace('.', ',')}{' '}
+              · {initial.stats?.review_count ?? 0} avaliações
+            </p>
+            <p className="mt-2 text-xs">
+              ●{' '}
+              {isReceivingNow(b)
+                ? 'Recebendo pedidos'
+                : 'Consultar disponibilidade'}
+            </p>
+            <div className="mt-5 space-y-3">
+              {buttons
+                .filter((button) => button.enabled)
+                .map((button, i) => (
+                  <div
+                    key={button.key}
+                    className="flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-bold"
+                    style={{
+                      background:
+                        i === 0
+                          ? theme.card
+                          : form.theme === 'dark'
+                            ? '#ffffff10'
+                            : 'white',
+                      color:
+                        i === 0
+                          ? 'white'
+                          : form.theme === 'dark'
+                            ? 'white'
+                            : theme.card,
+                      borderColor: theme.card,
+                    }}
+                  >
+                    <ButtonIcon button={button} />
+                    <span className="flex-1">{button.label}</span>
+                  </div>
+                ))}
+            </div>
+            <p className="my-5 text-xs underline">Ver perfil completo</p>
+            <p className="flex items-center justify-center gap-2 pt-4 text-sm font-bold">
+              <MapPin size={24} className="text-brand" />
+              Guia Local
+            </p>
+          </div>
+        </Card>
+      </div>
+      {edit && (
+        <Modal
+          title={edit.id ? 'Editar botão' : 'Adicionar botão'}
+          onClose={() => setEdit(null)}
+        >
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const url = edit.url.startsWith('/')
+                ? new URL(edit.url, window.location.origin).href
+                : edit.url
+              if (!safeExternalUrl(url)) {
+                void action.run(async () => {
+                  throw new Error(
+                    'Informe um endereço https://, http://, tel: ou mailto: válido.',
+                  )
+                })
+                return
+              }
+              setButtons((rows) =>
+                rows.some((row) => row.key === edit.key)
+                  ? rows.map((row) => (row.key === edit.key ? edit : row))
+                  : [...rows, edit],
+              )
+              setEdit(null)
+            }}
+          >
+            <Feedback action={action} />
             <TextField
-              required
               label="Texto do botão"
+              required
               value={edit.label}
               onChange={(v) => setEdit({ ...edit, label: v })}
             />
             <TextField
-              required
               label="Endereço (URL)"
+              required
               value={edit.url}
               onChange={(v) => setEdit({ ...edit, url: v })}
             />
@@ -363,21 +559,48 @@ function LinkForm({
               value={edit.icon}
               onChange={(v) => setEdit({ ...edit, icon: v })}
             />
-            <TextField
-              label="Ordem"
-              type="number"
-              value={edit.sort_order}
-              onChange={(v) => setEdit({ ...edit, sort_order: Number(v) })}
-            />
-            <Toggle
-              label="Habilitado"
-              checked={edit.enabled ?? true}
-              onChange={(v) => setEdit({ ...edit, enabled: v })}
-            />
-            <Button disabled={action.busy} type="submit">
-              Salvar botão
-            </Button>
+            <div className="flex gap-3">
+              <Button type="submit">Aplicar</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setButtons((rows) =>
+                    rows.filter((row) => row.key !== edit.key),
+                  )
+                  setEdit(null)
+                }}
+              >
+                Remover botão
+              </Button>
+            </div>
           </form>
+        </Modal>
+      )}
+      {qr && (
+        <Modal title="QR Code da sua página" onClose={() => setQr(false)}>
+          <div id="bio-qr" className="flex justify-center">
+            <QRCodeCanvas
+              value={publicUrl(`/l/${form.slug}`)}
+              size={280}
+              marginSize={4}
+            />
+          </div>
+          <Button
+            className="mt-5 w-full"
+            onClick={() => {
+              const canvas =
+                document.querySelector<HTMLCanvasElement>('#bio-qr canvas')
+              if (canvas) {
+                const a = document.createElement('a')
+                a.href = canvas.toDataURL()
+                a.download = `${form.slug}-qr.png`
+                a.click()
+              }
+            }}
+          >
+            Baixar QR Code
+          </Button>
         </Modal>
       )}
     </>

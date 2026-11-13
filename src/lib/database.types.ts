@@ -9,17 +9,9 @@ export type Json =
 export type UserRole = 'admin' | 'business' | 'client'
 export type UserStatus = 'active' | 'suspended'
 export type BusinessStatus =
-  | 'pending'
-  | 'adjustments_requested'
-  | 'active'
-  | 'rejected'
-  | 'archived'
+  'pending' | 'adjustments_requested' | 'active' | 'rejected' | 'archived'
 export type ReviewStatus =
-  | 'pending'
-  | 'published'
-  | 'adjustment_requested'
-  | 'removed'
-  | 'flagged'
+  'pending' | 'published' | 'adjustment_requested' | 'removed' | 'flagged'
 export type SuggestionStatus = 'pending' | 'registration_created' | 'archived'
 
 type Table<T> = {
@@ -91,6 +83,13 @@ export interface Database {
         updated_at: string
         approved_at: string | null
         approved_by: string | null
+        attendance_type: string
+        show_whatsapp: boolean
+        brand_color: string
+        brand_icon: string
+        location_display: string
+        contact_verified: boolean
+        owner_verified: boolean
       }>
       categories: Table<{
         id: string
@@ -155,6 +154,9 @@ export interface Database {
         suspension_reason: string | null
         notify_review_email: boolean
         notify_suggestion_email: boolean
+        notify_availability: boolean
+        notify_weekly_summary: boolean
+        city_name: string | null
         notify_marketing_email: boolean
         deletion_requested_at: string | null
         created_at: string
@@ -177,6 +179,8 @@ export interface Database {
         reported_at: string | null
         created_at: string
         updated_at: string
+        service_id: string | null
+        experience_month: string | null
       }>
       searches: Table<{
         id: string
@@ -197,6 +201,7 @@ export interface Database {
         sort_order: number
         active: boolean
         created_at: string
+        icon: string
       }>
       site_settings: Table<{
         id: number
@@ -225,6 +230,40 @@ export interface Database {
         created_business_id: string | null
         created_at: string
         updated_at: string
+      }>
+      review_reports: Table<{
+        id: string
+        review_id: string
+        user_id: string
+        reason: string
+        created_at: string
+      }>
+      review_photos: Table<{
+        id: string
+        review_id: string
+        url: string
+        storage_path: string | null
+        sort_order: number
+        created_at: string
+      }>
+      moderation_events: Table<{
+        id: string
+        review_id: string | null
+        business_id: string | null
+        actor_id: string | null
+        action: string
+        justification: string | null
+        created_at: string
+      }>
+      notifications: Table<{
+        id: string
+        user_id: string
+        type: string
+        title: string
+        body: string | null
+        link: string | null
+        read_at: string | null
+        created_at: string
       }>
       whatsapp_clicks: Table<{
         id: string

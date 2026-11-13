@@ -1,3 +1,4 @@
+import { BarChart3, MessageCircle, Star, Users } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from '@/context/AuthProvider'
@@ -10,8 +11,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { useAction } from '@/lib/management'
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  Legend,
   XAxis,
   YAxis,
   Tooltip,
@@ -96,7 +99,8 @@ export function Toggle({
     <label className="flex items-center gap-3 py-2 text-sm text-ink">
       <input
         type="checkbox"
-        className="accent-brand h-5 w-5"
+        role="switch"
+        className="management-switch"
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
@@ -125,7 +129,20 @@ const labels: Record<string, string> = {
 export function Status({ value }: { value: string }) {
   return (
     <Badge
-      tone={['active', 'published'].includes(value) ? 'success' : 'neutral'}
+      tone={
+        ['active', 'published'].includes(value)
+          ? 'success'
+          : [
+                'pending',
+                'flagged',
+                'adjustments_requested',
+                'adjustment_requested',
+              ].includes(value)
+            ? 'warning'
+            : ['removed', 'suspended', 'rejected'].includes(value)
+              ? 'danger'
+              : 'neutral'
+      }
     >
       {labels[value] ?? value}
     </Badge>
@@ -136,9 +153,22 @@ export function Metrics({ items }: { items: [string, string | number][] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {items.map(([label, value]) => (
-        <Card key={label} className="p-5">
-          <p className="text-sm text-muted">{label}</p>
-          <p className="text-3xl font-bold text-brand-dark">{value}</p>
+        <Card key={label} className="management-metric p-5">
+          <span className="metric-icon">
+            {(() => {
+              const Icon = [BarChart3, MessageCircle, Star, Users][
+                items.findIndex((item) => item[0] === label) % 4
+              ]!
+              return <Icon size={30} />
+            })()}
+          </span>
+          <div>
+            <p className="text-sm text-muted">{label.split(' · ')[0]}</p>
+            <p className="text-3xl font-bold text-ink">{value}</p>
+            {label.includes(' · ') && (
+              <p className="text-sm text-muted">{label.split(' · ')[1]}</p>
+            )}
+          </div>
         </Card>
       ))}
     </div>
@@ -148,9 +178,11 @@ export function Metrics({ items }: { items: [string, string | number][] }) {
 export function ActivityChart({
   rows,
   days = 30,
+  clicks = [],
 }: {
   rows: { created_at: string }[]
   days?: number
+  clicks?: { created_at: string }[]
 }) {
   const [today] = useState(() => new Date())
   const data = Array.from({ length: days }, (_, i) => {
@@ -159,24 +191,65 @@ export function ActivityChart({
     const key = d.toLocaleDateString('en-CA')
     return {
       date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      clicks: clicks.filter(
+        (r) => new Date(r.created_at).toLocaleDateString('en-CA') === key,
+      ).length,
       total: rows.filter(
         (r) => new Date(r.created_at).toLocaleDateString('en-CA') === key,
       ).length,
     }
   })
   return (
-    <Card className="p-4">
+    <div className="pt-3">
       <div className="h-64" role="img" aria-label="Gráfico de atividade diária">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
-            <XAxis dataKey="date" />
-            <YAxis allowDecimals={false} />
+          <AreaChart data={data}>
+            <CartesianGrid stroke="#edf0f3" />
+            <XAxis
+              dataKey="date"
+              axisLine={false}
+              tickLine={false}
+              minTickGap={50}
+              tick={{ fontSize: 12, fill: '#6f7998' }}
+            />
+            <YAxis
+              allowDecimals={false}
+              axisLine={false}
+              tickLine={false}
+              width={38}
+              tick={{ fontSize: 12, fill: '#6f7998' }}
+            />
             <Tooltip />
-            <Bar dataKey="total" name="Quantidade" fill="#0F7B5A" />
-          </BarChart>
+            <Legend
+              verticalAlign="top"
+              align="right"
+              height={40}
+              iconType="circle"
+            />
+            <Area
+              type="monotone"
+              dataKey="total"
+              name="Visitas"
+              dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
+              stroke="#008765"
+              fill="#008765"
+              fillOpacity={0.14}
+              strokeWidth={2}
+            />
+            <Area
+              type="monotone"
+              dataKey="clicks"
+              name="Cliques no WhatsApp"
+              dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
+              stroke="#46cd99"
+              fill="#46cd99"
+              fillOpacity={0.08}
+              strokeWidth={2}
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -214,5 +287,28 @@ export function Reorder({
         ↓
       </Button>
     </span>
+  )
+}
+
+export function PeriodFilter({
+  days,
+  onChange,
+}: {
+  days: number
+  onChange: (days: number) => void
+}) {
+  return (
+    <select
+      aria-label="Período"
+      className="rounded-lg border border-line bg-white px-4 py-3 text-sm"
+      value={days}
+      onChange={(e) => onChange(Number(e.target.value))}
+    >
+      {[7, 30, 90].map((n) => (
+        <option key={n} value={n}>
+          Últimos {n} dias
+        </option>
+      ))}
+    </select>
   )
 }
