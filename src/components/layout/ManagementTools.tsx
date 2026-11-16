@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useResource } from '@/lib/public-data'
 import { checked } from '@/lib/management'
+import { searchBusinesses } from '@/lib/business-search'
 
 export function NotificationBell() {
   const { user } = useAuth()
@@ -130,13 +131,12 @@ export function GlobalAdminSearch() {
       const term = `%${query.trim().replace(/[%_]/g, '')}%`
       try {
         const [businesses, users, reviews] = await Promise.all([
-          checked(
-            supabase
-              .from('businesses')
-              .select('id,name')
-              .ilike('name', term)
-              .limit(5),
-          ),
+          searchBusinesses({
+            query,
+            includeInactive: true,
+            limit: 5,
+            offset: 0,
+          }).then((result) => result.rows),
           checked(
             supabase
               .from('profiles')

@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { Flag, Heart, Star, UserRound } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { RouteFallback } from '@/components/ui/Skeleton'
 const items = [
   { to: '/morador/favoritos', label: 'Favoritos', icon: Heart },
   { to: '/morador/avaliacoes', label: 'Minhas avaliações', icon: Star },
@@ -27,7 +29,9 @@ export function ResidentShell() {
         </nav>
       </aside>
       <div className="min-w-0">
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   )

@@ -1,45 +1,169 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthProvider'
 import { RequireAuth } from '@/components/RequireAuth'
 import { PublicLayout } from '@/components/layout/PublicLayout'
-import { AdminLayout } from '@/components/layout/AdminLayout'
-import { BusinessLayout } from '@/components/layout/BusinessLayout'
-import { ResidentShell } from '@/components/layout/ResidentShell'
 import { HomePage } from '@/pages/public/HomePage'
 import { SearchPage } from '@/pages/public/SearchPage'
-import { BusinessProfilePage } from '@/pages/public/BusinessProfilePage'
-import { WriteReviewPage } from '@/pages/public/WriteReviewPage'
-import { ReviewSuccessPage } from '@/pages/public/ReviewSuccessPage'
-import { LinkInBioPage } from '@/pages/public/LinkInBioPage'
-import { SuggestPage } from '@/pages/public/SuggestPage'
-import { LoginPage } from '@/pages/auth/LoginPage'
-import { FavoritesPage } from '@/pages/resident/FavoritesPage'
-import { MyReviewsPage } from '@/pages/resident/MyReviewsPage'
-import { SuggestBusinessPage } from '@/pages/resident/SuggestBusinessPage'
-import { AccountPage } from '@/pages/resident/AccountPage'
-import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
-import { AdminBusinessesPage } from '@/pages/admin/AdminBusinessesPage'
-import { AdminSuggestionsPage } from '@/pages/admin/AdminSuggestionsPage'
-import { AdminModerationPage } from '@/pages/admin/AdminModerationPage'
-import { AdminSearchesPage } from '@/pages/admin/AdminSearchesPage'
-import { AdminCategoriesPage } from '@/pages/admin/AdminCategoriesPage'
-import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
-import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage'
-import { BusinessDashboardPage } from '@/pages/business/BusinessDashboardPage'
-import { BusinessProfileEditPage } from '@/pages/business/BusinessProfileEditPage'
-import { BusinessServicesPage } from '@/pages/business/BusinessServicesPage'
-import { BusinessReviewsPage } from '@/pages/business/BusinessReviewsPage'
-import { BusinessAvailabilityPage } from '@/pages/business/BusinessAvailabilityPage'
-import { BusinessLinkInBioPage } from '@/pages/business/BusinessLinkInBioPage'
-import { BusinessPromoPage } from '@/pages/business/BusinessPromoPage'
-import { BusinessSettingsPage } from '@/pages/business/BusinessSettingsPage'
+import { RouteFallback } from '@/components/ui/Skeleton'
+
+const BusinessProfilePage = lazy(() =>
+  import('@/pages/public/BusinessProfilePage').then((module) => ({
+    default: module.BusinessProfilePage,
+  })),
+)
+const WriteReviewPage = lazy(() =>
+  import('@/pages/public/WriteReviewPage').then((module) => ({
+    default: module.WriteReviewPage,
+  })),
+)
+const ReviewSuccessPage = lazy(() =>
+  import('@/pages/public/ReviewSuccessPage').then((module) => ({
+    default: module.ReviewSuccessPage,
+  })),
+)
+const LinkInBioPage = lazy(() =>
+  import('@/pages/public/LinkInBioPage').then((module) => ({
+    default: module.LinkInBioPage,
+  })),
+)
+const SuggestPage = lazy(() =>
+  import('@/pages/public/SuggestPage').then((module) => ({
+    default: module.SuggestPage,
+  })),
+)
+const LoginPage = lazy(() =>
+  import('@/pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })),
+)
+const FavoritesPage = lazy(() =>
+  import('@/pages/resident/FavoritesPage').then((module) => ({
+    default: module.FavoritesPage,
+  })),
+)
+const MyReviewsPage = lazy(() =>
+  import('@/pages/resident/MyReviewsPage').then((module) => ({
+    default: module.MyReviewsPage,
+  })),
+)
+const SuggestBusinessPage = lazy(() =>
+  import('@/pages/resident/SuggestBusinessPage').then((module) => ({
+    default: module.SuggestBusinessPage,
+  })),
+)
+const AccountPage = lazy(() =>
+  import('@/pages/resident/AccountPage').then((module) => ({
+    default: module.AccountPage,
+  })),
+)
+const AdminLayout = lazy(() =>
+  import('@/components/layout/AdminLayout').then((module) => ({
+    default: module.AdminLayout,
+  })),
+)
+const AdminDashboardPage = lazy(() =>
+  import('@/pages/admin/AdminDashboardPage').then((module) => ({
+    default: module.AdminDashboardPage,
+  })),
+)
+const AdminBusinessesPage = lazy(() =>
+  import('@/pages/admin/AdminBusinessesPage').then((module) => ({
+    default: module.AdminBusinessesPage,
+  })),
+)
+const AdminSuggestionsPage = lazy(() =>
+  import('@/pages/admin/AdminSuggestionsPage').then((module) => ({
+    default: module.AdminSuggestionsPage,
+  })),
+)
+const AdminModerationPage = lazy(() =>
+  import('@/pages/admin/AdminModerationPage').then((module) => ({
+    default: module.AdminModerationPage,
+  })),
+)
+const AdminSearchesPage = lazy(() =>
+  import('@/pages/admin/AdminSearchesPage').then((module) => ({
+    default: module.AdminSearchesPage,
+  })),
+)
+const AdminCategoriesPage = lazy(() =>
+  import('@/pages/admin/AdminCategoriesPage').then((module) => ({
+    default: module.AdminCategoriesPage,
+  })),
+)
+const AdminUsersPage = lazy(() =>
+  import('@/pages/admin/AdminUsersPage').then((module) => ({
+    default: module.AdminUsersPage,
+  })),
+)
+const AdminSettingsPage = lazy(() =>
+  import('@/pages/admin/AdminSettingsPage').then((module) => ({
+    default: module.AdminSettingsPage,
+  })),
+)
+const BusinessLayout = lazy(() =>
+  import('@/components/layout/BusinessLayout').then((module) => ({
+    default: module.BusinessLayout,
+  })),
+)
+const BusinessDashboardPage = lazy(() =>
+  import('@/pages/business/BusinessDashboardPage').then((module) => ({
+    default: module.BusinessDashboardPage,
+  })),
+)
+const BusinessProfileEditPage = lazy(() =>
+  import('@/pages/business/BusinessProfileEditPage').then((module) => ({
+    default: module.BusinessProfileEditPage,
+  })),
+)
+const BusinessServicesPage = lazy(() =>
+  import('@/pages/business/BusinessServicesPage').then((module) => ({
+    default: module.BusinessServicesPage,
+  })),
+)
+const BusinessReviewsPage = lazy(() =>
+  import('@/pages/business/BusinessReviewsPage').then((module) => ({
+    default: module.BusinessReviewsPage,
+  })),
+)
+const BusinessAvailabilityPage = lazy(() =>
+  import('@/pages/business/BusinessAvailabilityPage').then((module) => ({
+    default: module.BusinessAvailabilityPage,
+  })),
+)
+const BusinessLinkInBioPage = lazy(() =>
+  import('@/pages/business/BusinessLinkInBioPage').then((module) => ({
+    default: module.BusinessLinkInBioPage,
+  })),
+)
+const BusinessPromoPage = lazy(() =>
+  import('@/pages/business/BusinessPromoPage').then((module) => ({
+    default: module.BusinessPromoPage,
+  })),
+)
+const BusinessSettingsPage = lazy(() =>
+  import('@/pages/business/BusinessSettingsPage').then((module) => ({
+    default: module.BusinessSettingsPage,
+  })),
+)
+const ResidentShell = lazy(() =>
+  import('@/components/layout/ResidentShell').then((module) => ({
+    default: module.ResidentShell,
+  })),
+)
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter basename="/guia-local">
         <Routes>
-          <Route path="/l/:slug" element={<LinkInBioPage />} />
+          <Route
+            path="/l/:slug"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <LinkInBioPage />
+              </Suspense>
+            }
+          />
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/busca" element={<SearchPage />} />

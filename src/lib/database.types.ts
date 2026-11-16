@@ -90,6 +90,16 @@ export interface Database {
         location_display: string
         contact_verified: boolean
         owner_verified: boolean
+        source: string | null
+        google_place_id: string | null
+        google_maps_url: string | null
+        google_category: string | null
+        google_rating: number | null
+        google_review_count: number | null
+        google_hours: Json | null
+        latitude: number | null
+        longitude: number | null
+        imported_at: string | null
       }>
       categories: Table<{
         id: string
@@ -294,6 +304,26 @@ export interface Database {
     }
     Functions: {
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      search_businesses: {
+        Args: {
+          p_query?: string | null
+          p_category?: string | null
+          p_neighborhood?: string | null
+          p_home_service?: boolean | null
+          p_receiving?: boolean | null
+          p_min_rating?: number | null
+          p_sort?: string | null
+          p_status?: string | null
+          p_include_inactive?: boolean | null
+          p_ids?: string[] | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
+        Returns: Json
+      }
+      home_snapshot: { Args: Record<PropertyKey, never>; Returns: Json }
+      business_admin_counts: { Args: Record<PropertyKey, never>; Returns: Json }
+      business_category_counts: { Args: Record<PropertyKey, never>; Returns: Json }
     }
     Enums: {
       business_status: BusinessStatus

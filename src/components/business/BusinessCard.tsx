@@ -3,13 +3,13 @@ import { Photo } from '@/components/Photo'
 import { Heart, MapPin } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { logWhatsAppClick } from '@/lib/analytics'
-import { useResource } from '@/lib/public-data'
 import type { PublicBusiness } from '@/lib/public-data'
 import { businessLocation, whatsappLink } from '@/lib/utils'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { BrandTile, Rating, ReceivingChip } from './BusinessIdentity'
+import { BrandTile, Rating, ReceivingChip, ratingView } from './BusinessIdentity'
 export function BusinessCard({
   business,
   source = 'search',
@@ -20,9 +20,9 @@ export function BusinessCard({
     PublicBusiness,
     'categories' | 'neighborhoods' | 'business_stats'
   > & {
-    categories?: PublicBusiness['categories']
-    neighborhoods?: PublicBusiness['neighborhoods']
-    business_stats?: PublicBusiness['business_stats']
+    categories?: { name: string; slug?: string | null } | null
+    neighborhoods?: { name: string } | null
+    business_stats?: { avg_rating?: number | null; review_count?: number | null } | null
   }
   source?: string
   city?: string
@@ -30,19 +30,31 @@ export function BusinessCard({
 }) {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const favorite = useResource(async () => {
-    if (!user) return false
-    const result = await supabase
-      .from('favorites')
-      .select('business_id')
-      .eq('user_id', user.id)
-      .eq('business_id', business.id)
-      .maybeSingle()
-    if (result.error) throw result.error
-    return Boolean(result.data)
-  }, [user?.id, business.id])
+  const favorites = useQuery({
+    queryKey: ['favorite-ids', user?.id],
+    enabled: Boolean(user),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const ids: string[] = []
+      for (let offset = 0; offset < 5000; offset += 200) {
+        const { data, error: favoriteError } = await supabase
+          .from('favorites')
+          .select('business_id')
+          .eq('user_id', user!.id)
+          .order('business_id')
+          .range(offset, offset + 199)
+        if (favoriteError) throw favoriteError
+        ids.push(...data.map((row) => row.business_id))
+        if (data.length < 200) break
+      }
+      return ids
+    },
+  })
+  const saved = favorites.data?.includes(business.id) ?? false
+  const viewed = ratingView(business)
   const wa =
     business.show_whatsapp !== false
       ? whatsappLink(business.whatsapp || business.phone)
@@ -65,7 +77,7 @@ export function BusinessCard({
     }
     setBusy(true)
     setError('')
-    const result = favorite.data
+    const result = saved
       ? await supabase
           .from('favorites')
           .delete()
@@ -75,7 +87,12 @@ export function BusinessCard({
           .from('favorites')
           .insert({ business_id: business.id, user_id: user.id })
     if (result.error) setError('Não foi possível atualizar o favorito.')
-    else favorite.reload()
+    else {
+      queryClient.setQueryData<string[]>(['favorite-ids', user.id], (current = []) =>
+        saved ? current.filter((id) => id !== business.id) : [...current, business.id],
+      )
+      void queryClient.invalidateQueries({ queryKey: ['favorites', user.id] })
+    }
     setBusy(false)
   }
   return (
@@ -97,15 +114,15 @@ export function BusinessCard({
         </Link>
         <button
           aria-label={
-            favorite.data ? 'Remover dos favoritos' : 'Salvar nos favoritos'
+            saved ? 'Remover dos favoritos' : 'Salvar nos favoritos'
           }
-          disabled={busy || favorite.loading}
+          disabled={busy || favorites.isLoading}
           onClick={() => void toggle()}
           className="absolute right-3 top-3 rounded-full bg-white p-2 text-ink shadow-sm"
         >
           <Heart
             size={19}
-            className={favorite.data ? 'fill-brand text-brand' : ''}
+            className={saved ? 'fill-brand text-brand' : ''}
           />
         </button>
       </div>
@@ -119,10 +136,7 @@ export function BusinessCard({
             <p className="mb-1 text-sm text-muted">
               {business.categories?.name}
             </p>
-            <Rating
-              rating={business.business_stats?.avg_rating}
-              count={business.business_stats?.review_count}
-            />
+            <Rating rating={viewed.rating} count={viewed.count} source={viewed.source} />
           </div>
         </div>
         <p className="mb-2 mt-3 flex items-center gap-2 text-sm text-muted">

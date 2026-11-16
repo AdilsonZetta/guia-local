@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useResource } from '@/lib/public-data'
 import { all } from '@/lib/management'
+import { loadAdminBusinessCounts, searchBusinesses } from '@/lib/business-search'
 import {
   ActivityChart,
   Metrics,
@@ -14,31 +15,21 @@ import { Card } from '@/components/ui/Card'
 export function AdminDashboardPage() {
   const [days, setDays] = useState(30)
   const resource = useResource(async () => {
-    const [
-      businesses,
-      profiles,
-      reviews,
-      clicks,
-      visits,
-      categories,
-      neighborhoods,
-    ] = await Promise.all([
-      all('businesses'),
+    const [profiles, reviews, clicks, visits, counts, recent] = await Promise.all([
       all('profiles'),
       all('reviews'),
       all('whatsapp_clicks'),
       all('profile_visits'),
-      all('categories'),
-      all('neighborhoods'),
+      loadAdminBusinessCounts(),
+      searchBusinesses({ includeInactive: true, sort: 'recent', limit: 6, offset: 0 }),
     ])
     return {
-      businesses,
       profiles,
       reviews,
       clicks,
       visits,
-      categories,
-      neighborhoods,
+      counts,
+      recent: recent.rows,
     }
   })
   const d = resource.data
@@ -64,7 +55,7 @@ export function AdminDashboardPage() {
           <>
             <Metrics
               items={[
-                ['Empresas cadastradas', d.businesses.length],
+                ['Empresas cadastradas', d.counts.total],
                 ['Usuários cadastrados', d.profiles.length],
                 ['Cliques no WhatsApp', d.clicks.filter(inPeriod).length],
                 [
@@ -88,7 +79,7 @@ export function AdminDashboardPage() {
                 <h2>Precisa da sua atenção</h2>
                 <div className="rounded-xl bg-orange-50 p-5">
                   <strong className="text-3xl">
-                    {d.businesses.filter((b) => b.status === 'pending').length}
+                    {d.counts.pending}
                   </strong>
                   <p className="mb-3 text-muted">cadastros pendentes</p>
                   <Link
@@ -127,11 +118,7 @@ export function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {d.businesses
-                    .slice()
-                    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-                    .slice(0, 6)
-                    .map((b) => (
+                  {d.recent.map((b) => (
                       <tr key={b.id} className="border-b border-line">
                         <td>
                           <div className="flex items-center gap-3">
@@ -155,13 +142,10 @@ export function AdminDashboardPage() {
                           </div>
                         </td>
                         <td>
-                          {d.categories.find((c) => c.id === b.category_id)
-                            ?.name || '—'}
+                          {b.categories?.name || '—'}
                         </td>
                         <td>
-                          {d.neighborhoods.find(
-                            (n) => n.id === b.neighborhood_id,
-                          )?.name || '—'}
+                          {b.neighborhoods?.name || '—'}
                         </td>
                         <td>
                           <Status value={b.status} />

@@ -4,6 +4,7 @@ import { useResource } from '@/lib/public-data'
 import type { Tables } from '@/lib/database.types'
 import { slugify } from '@/lib/utils'
 import { all, checked, useAction } from '@/lib/management'
+import { loadCategoryCounts } from '@/lib/business-search'
 import {
   Metrics,
   ResourceState,
@@ -35,13 +36,13 @@ export function AdminCategoriesPage() {
   const action = useAction()
   const [edit, setEdit] = useState<Partial<Tables<'categories'>> | null>(null)
   const resource = useResource(async () => {
-    const [categories, businesses] = await Promise.all([
+    const [categories, counts] = await Promise.all([
       all('categories'),
-      all('businesses'),
+      loadCategoryCounts(),
     ])
     return {
       categories: categories.sort((a, b) => a.sort_order - b.sort_order),
-      businesses,
+      counts,
     }
   })
   const d = resource.data
@@ -81,7 +82,7 @@ export function AdminCategoriesPage() {
                 ],
                 [
                   'Negócios vinculados',
-                  d.businesses.filter((b) => b.category_id).length,
+                  d.counts.reduce((sum, item) => sum + item.count, 0),
                 ],
               ]}
             />
@@ -140,8 +141,8 @@ export function AdminCategoriesPage() {
                         </td>
                         <td>
                           {
-                            d.businesses.filter((b) => b.category_id === c.id)
-                              .length
+                            d.counts.find((item) => item.category_id === c.id)?.count ??
+                              0
                           }
                         </td>
                         <td>
