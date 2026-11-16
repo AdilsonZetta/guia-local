@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@/context/AuthProvider'
-import { catalog, useResource } from '@/lib/public-data'
+import { friendlyError, useCatalog } from '@/lib/queries'
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect'
 import { supabase } from '@/lib/supabase'
 import { slugify } from '@/lib/utils'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
@@ -14,7 +15,8 @@ export function BusinessRegistrationForm({
   onComplete: () => void
 }) {
   const { user, refreshProfile } = useAuth()
-  const refs = useResource(catalog)
+  const refs = useCatalog()
+  const [neighborhoodId, setNeighborhoodId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -51,8 +53,11 @@ export function BusinessRegistrationForm({
       setBusy(false)
     }
   }
-  if (refs.loading) return <Spinner />
-  if (refs.error) return <LoadError message={refs.error} retry={refs.reload} />
+  if (refs.isLoading) return <Spinner />
+  if (refs.isError)
+    return (
+      <LoadError message={friendlyError(refs.error)} retry={() => void refs.refetch()} />
+    )
   return (
     <form onSubmit={submit} className="space-y-4">
       <Notice>
@@ -86,21 +91,16 @@ export function BusinessRegistrationForm({
         </Select>
       </Field>
       <Field label="Bairro *">
-        <Select
-          aria-label="Bairro"
-          name="neighborhood_id"
+        <NeighborhoodSelect
           required
-          defaultValue=""
-        >
-          <option value="" disabled>
-            Selecione
-          </option>
-          {refs.data?.neighborhoods.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.name}
-            </option>
-          ))}
-        </Select>
+          name="neighborhood_id"
+          valueKey="id"
+          ariaLabel="Bairro"
+          placeholder="Selecione"
+          neighborhoods={refs.data?.neighborhoods ?? []}
+          value={neighborhoodId}
+          onChange={setNeighborhoodId}
+        />
       </Field>
       <Field label="WhatsApp com DDD *">
         <Input

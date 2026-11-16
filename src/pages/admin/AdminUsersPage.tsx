@@ -1,9 +1,11 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/context/AuthProvider'
 import { useResource } from '@/lib/public-data'
 import { supabase } from '@/lib/supabase'
 import { all, checked, useAction, csv, audit } from '@/lib/management'
+import { businessesForOwners, loadAdminBusinessCounts } from '@/lib/business-search'
 import {
   ResourceState,
   Status,
@@ -27,13 +29,17 @@ export function AdminUsersPage() {
   const [reason, setReason] = useState('')
   const action = useAction()
   const resource = useResource(() => all('profiles'))
+  const counts = useQuery({
+    queryKey: ['admin-counts'],
+    queryFn: loadAdminBusinessCounts,
+    staleTime: 60_000,
+  })
   const related = useResource(async () => {
-    const [businesses, reviews, favorites] = await Promise.all([
-      all('businesses'),
+    const [reviews, favorites] = await Promise.all([
       all('reviews'),
       all('favorites'),
     ])
-    return { businesses, reviews, favorites }
+    return { reviews, favorites }
   })
   const rows = resource.data?.filter(
     (p) =>
@@ -43,6 +49,12 @@ export function AdminUsersPage() {
         .toLocaleLowerCase('pt-BR')
         .includes(search.toLocaleLowerCase('pt-BR')),
   )
+  const pageRows = rows?.slice((page - 1) * 10, page * 10) ?? []
+  const owned = useQuery({
+    queryKey: ['admin-owned', pageRows.map((profile) => profile.id).join(',')],
+    enabled: pageRows.length > 0,
+    queryFn: () => businessesForOwners(pageRows.map((profile) => profile.id)),
+  })
   const current = resource.data?.find((p) => p.id === selected)
   return (
     <PageContent title="Usuários">
@@ -62,11 +74,7 @@ export function AdminUsersPage() {
               ],
               [
                 'Responsáveis por negócios',
-                new Set(
-                  related.data?.businesses
-                    .map((b) => b.owner_id)
-                    .filter(Boolean),
-                ).size,
+                counts.data?.owners ?? 0,
               ],
             ]}
           />
@@ -139,7 +147,7 @@ export function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {rows?.slice((page - 1) * 10, page * 10).map((p) => (
+              {pageRows.map((p) => (
                 <tr className="border-t border-line" key={p.id}>
                   <td className="p-4">
                     <p className="font-bold">{p.full_name || 'Sem nome'}</p>
@@ -155,9 +163,9 @@ export function AdminUsersPage() {
                     <Status value={p.status} />
                   </td>
                   <td className="p-4">
-                    {related.data?.businesses
-                      .filter((b) => b.owner_id === p.id)
-                      .map((b) => b.name)
+                    {owned.data
+                      ?.filter((business) => business.owner_id === p.id)
+                      .map((business) => business.name)
                       .join(', ') || '—'}
                   </td>
                   <td className="p-4">

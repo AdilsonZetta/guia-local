@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/Card'
 import { Field, Select, Textarea, Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Photo } from '@/components/Photo'
-import { Rating } from '@/components/business/BusinessIdentity'
+import { Rating, ratingView } from '@/components/business/BusinessIdentity'
 import { checked, useAction, upload } from '@/lib/management'
 import {
   BusinessGate,
@@ -341,8 +341,11 @@ function Editor() {
                           }
                         </p>
                         <Rating
-                          rating={refs.data?.stats?.avg_rating}
-                          count={refs.data?.stats?.review_count}
+                          {...ratingView({
+                            business_stats: refs.data?.stats,
+                            google_rating: form.google_rating,
+                            google_review_count: form.google_review_count,
+                          })}
                         />
                       </div>
                     </div>

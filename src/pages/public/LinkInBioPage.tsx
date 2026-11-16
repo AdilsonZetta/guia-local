@@ -3,12 +3,8 @@ import { WhatsAppIcon } from '@/components/WhatsAppIcon'
 import { Link, useParams } from 'react-router-dom'
 import { MapPin, Share2, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import {
-  isWhatsAppUrl,
-  publicBusiness,
-  safeExternalUrl,
-  useResource,
-} from '@/lib/public-data'
+import { isWhatsAppUrl, publicBusiness, safeExternalUrl } from '@/lib/public-data'
+import { useQueryResource } from '@/lib/queries'
 import { logWhatsAppClick } from '@/lib/analytics'
 import { useAuth } from '@/context/AuthProvider'
 import { CategoryIcon } from '@/components/CategoryIcon'
@@ -16,6 +12,7 @@ import {
   BrandTile,
   Rating,
   ReceivingChip,
+  ratingView,
 } from '@/components/business/BusinessIdentity'
 import { useState } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
@@ -35,7 +32,10 @@ export function LinkInBioPage() {
   const { slug = '' } = useParams()
   const { user } = useAuth()
   const [shareMessage, setShareMessage] = useState('')
-  const resource = useResource(async () => {
+  const resource = useQueryResource({
+    queryKey: ['link-in-bio', slug],
+    staleTime: 60_000,
+    queryFn: async () => {
     const [settings, link] = await Promise.all([
       supabase
         .from('site_settings')
@@ -73,7 +73,8 @@ export function LinkInBioPage() {
     if (buttons.error) throw buttons.error
     if (!business) return null
     return { link: link.data, business, buttons: buttons.data }
-  }, [slug])
+  },
+  })
   if (resource.loading) return <Spinner />
   if (resource.error)
     return (
@@ -138,10 +139,7 @@ export function LinkInBioPage() {
           </p>
         )}
         <div className="mt-5 text-xl">
-          <Rating
-            rating={business.business_stats?.avg_rating}
-            count={business.business_stats?.review_count}
-          />
+          <Rating {...ratingView(business)} />
         </div>
         <div className="mt-3">
           <ReceivingChip business={business} />

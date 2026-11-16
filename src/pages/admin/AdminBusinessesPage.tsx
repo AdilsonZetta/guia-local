@@ -1,64 +1,141 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { useResource } from '@/lib/public-data'
 import type { BusinessStatus } from '@/lib/database.types'
 import { slugify } from '@/lib/utils'
-import { all, checked, useAction, audit } from '@/lib/management'
+import { checked, useAction, audit, csv } from '@/lib/management'
 import {
-  ResourceState,
   Status,
   Feedback,
   TextField,
   Metrics,
 } from '@/components/Management'
+import {
+  BUSINESS_PAGE_SIZE,
+  collectBusinesses,
+  loadAdminBusinessCounts,
+  searchBusinesses,
+} from '@/lib/business-search'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
-import { PageContent, EmptyState } from '@/components/PageContent'
+import { PageContent, EmptyState, LoadError } from '@/components/PageContent'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Select, Textarea, Input } from '@/components/ui/Input'
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect'
 import { Modal } from '@/components/ui/Modal'
+import { CardSkeleton } from '@/components/ui/Skeleton'
+const PAGE_SIZE = BUSINESS_PAGE_SIZE
 export function AdminBusinessesPage() {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [params] = useSearchParams()
   const [tab, setTab] = useState(params.get('status') ?? '')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 350)
   const [category, setCategory] = useState('')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string | null>(params.get('id'))
   const [notes, setNotes] = useState('')
   const [create, setCreate] = useState(false)
+  const [draftNeighborhood, setDraftNeighborhood] = useState('')
+  const [exporting, setExporting] = useState(false)
   const action = useAction()
-  const resource = useResource(async () => {
-    const [businesses, categories, neighborhoods, profiles, areas] =
-      await Promise.all([
-        all('businesses'),
-        all('categories'),
-        all('neighborhoods'),
-        all('profiles'),
-        all('business_service_areas'),
-      ])
-    return {
-      businesses: businesses.sort((a, b) =>
-        b.created_at.localeCompare(a.created_at),
-      ),
-      categories,
-      neighborhoods,
-      profiles,
-      areas,
-    }
+  const categories = useQuery({
+    queryKey: ['admin-categories'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sort_order')
+        .order('name')
+      if (error) throw error
+      return data
+    },
   })
-  const d = resource.data
-  const current = d?.businesses.find((b) => b.id === selected)
-  const rows = d?.businesses.filter(
-    (b) =>
-      (!tab || b.status === tab) &&
-      (!category || b.category_id === category) &&
-      b.name
-        .toLocaleLowerCase('pt-BR')
-        .includes(search.toLocaleLowerCase('pt-BR')),
-  )
+  const neighborhoods = useQuery({
+    queryKey: ['admin-neighborhoods'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('neighborhoods')
+        .select('*')
+        .order('name')
+      if (error) throw error
+      return data
+    },
+  })
+  const counts = useQuery({
+    queryKey: ['admin-counts'],
+    queryFn: loadAdminBusinessCounts,
+    staleTime: 30_000,
+  })
+  const list = useQuery({
+    queryKey: ['admin-businesses', tab, debouncedSearch, category, page],
+    placeholderData: (previous) => previous,
+    queryFn: () =>
+      searchBusinesses({
+        query: debouncedSearch,
+        category: category || null,
+        status: tab || null,
+        includeInactive: true,
+        sort: 'recent',
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
+      }),
+  })
+  const detail = useQuery({
+    queryKey: ['admin-business', selected],
+    enabled: Boolean(selected),
+    queryFn: async () => {
+      const result = await searchBusinesses({
+        ids: [selected!],
+        includeInactive: true,
+        limit: 1,
+        offset: 0,
+      })
+      return result.rows[0] ?? null
+    },
+  })
+  const areas = useQuery({
+    queryKey: ['admin-business-areas', selected],
+    enabled: Boolean(selected),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('business_service_areas')
+        .select('*')
+        .eq('business_id', selected!)
+      if (error) throw error
+      return data
+    },
+  })
+  const current = detail.data ?? list.data?.rows.find((row) => row.id === selected) ?? null
+  const owner = useQuery({
+    queryKey: ['admin-owner', current?.owner_id],
+    enabled: Boolean(current?.owner_id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id,full_name')
+        .eq('id', current!.owner_id!)
+        .maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+  const rows = list.data?.rows ?? []
+  const total = list.data?.total ?? 0
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-counts'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-business', selected] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-business-areas', selected] }),
+    ])
+  }
   async function moderate(status: BusinessStatus) {
     if (!current) return
     if (['adjustments_requested', 'rejected'].includes(status) && !notes.trim())
@@ -80,7 +157,7 @@ export function AdminBusinessesPage() {
     await audit(user!.id, `business_${status}`, 'businesses', current.id, {
       notes,
     })
-    resource.reload()
+    await refresh()
   }
   return (
     <PageContent
@@ -88,22 +165,13 @@ export function AdminBusinessesPage() {
       description="Gerencie os cadastros e conecte negócios aos moradores."
     >
       <Feedback action={action} />
-      <ResourceState resource={resource}>
-        {d && (
+      {counts.data && (
           <Metrics
             items={[
-              ['Total', d.businesses.length],
-              [
-                'Ativos',
-                d.businesses.filter(
-                  (b) => b.status === 'active' && !b.is_paused,
-                ).length,
-              ],
-              [
-                'Pendentes',
-                d.businesses.filter((b) => b.status === 'pending').length,
-              ],
-              ['Pausados', d.businesses.filter((b) => b.is_paused).length],
+              ['Total', counts.data.total],
+              ['Ativos', counts.data.active],
+              ['Pendentes', counts.data.pending],
+              ['Pausados', counts.data.paused],
             ]}
           />
         )}
@@ -111,6 +179,58 @@ export function AdminBusinessesPage() {
           <Link className="btn-outline" to="/admin/empresas/indicacoes">
             Indicações
           </Link>
+          <Button
+            variant="outline"
+            disabled={exporting}
+            onClick={() => {
+              setExporting(true)
+              void collectBusinesses({
+                query: debouncedSearch,
+                category: category || null,
+                status: tab || null,
+                includeInactive: true,
+                sort: 'recent',
+              })
+                .then((exported) => {
+                  csv(
+                    'empresas.csv',
+                    exported.map((business) => ({
+                      id: business.id,
+                      name: business.name,
+                      slug: business.slug,
+                      status: business.status,
+                      category: business.categories?.name ?? '',
+                      neighborhood: business.neighborhoods?.name ?? '',
+                      phone: business.phone ?? '',
+                      whatsapp: business.whatsapp ?? '',
+                      address: business.address ?? '',
+                      google_rating: business.google_rating ?? '',
+                      google_review_count: business.google_review_count ?? '',
+                      google_category: business.google_category ?? '',
+                      created_at: business.created_at,
+                    })),
+                    [
+                      'id',
+                      'name',
+                      'slug',
+                      'status',
+                      'category',
+                      'neighborhood',
+                      'phone',
+                      'whatsapp',
+                      'address',
+                      'google_rating',
+                      'google_review_count',
+                      'google_category',
+                      'created_at',
+                    ],
+                  )
+                })
+                .finally(() => setExporting(false))
+            }}
+          >
+            {exporting ? 'Exportando…' : 'Exportar CSV'}
+          </Button>
         </div>
         <div className="flex flex-wrap gap-2">
           {[
@@ -128,12 +248,17 @@ export function AdminBusinessesPage() {
               }}
             >
               {label}
-              {key === 'pending'
-                ? ` (${d?.businesses.filter((b) => b.status === 'pending').length ?? 0})`
-                : ''}
+              {key === 'pending' ? ` (${counts.data?.pending ?? 0})` : ''}
             </Button>
           ))}
-          <Button onClick={() => setCreate(true)}>+ Novo cadastro</Button>
+          <Button
+            onClick={() => {
+              setDraftNeighborhood('')
+              setCreate(true)
+            }}
+          >
+            + Novo cadastro
+          </Button>
         </div>
         <TextField
           label="Buscar por nome"
@@ -152,14 +277,23 @@ export function AdminBusinessesPage() {
             }}
           >
             <option value="">Todas as categorias</option>
-            {d?.categories.map((c) => (
+            {categories.data?.map((c) => (
               <option value={c.id} key={c.id}>
                 {c.name}
               </option>
             ))}
           </Select>
         </Field>
-        {!rows?.length && <EmptyState title="Nenhuma empresa encontrada" />}
+        {list.isLoading ? (
+          <CardSkeleton count={3} />
+        ) : list.isError ? (
+          <LoadError
+            message="Não foi possível carregar os dados. Tente novamente."
+            retry={() => void list.refetch()}
+          />
+        ) : (
+          <>
+        {!rows.length && <EmptyState title="Nenhuma empresa encontrada" />}
         <Card className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-canvas">
@@ -172,7 +306,7 @@ export function AdminBusinessesPage() {
               </tr>
             </thead>
             <tbody>
-              {rows?.slice((page - 1) * 10, page * 10).map((b) => (
+              {rows.map((b) => (
                 <tr className="border-t border-line" key={b.id}>
                   <td className="p-4 font-bold">
                     <div className="flex items-center gap-3">
@@ -196,12 +330,10 @@ export function AdminBusinessesPage() {
                     </div>
                   </td>
                   <td className="p-4">
-                    {d?.categories.find((c) => c.id === b.category_id)?.name ??
-                      '—'}
+                    {b.categories?.name ?? '—'}
                   </td>
                   <td className="p-4">
-                    {d?.neighborhoods.find((n) => n.id === b.neighborhood_id)
-                      ?.name || '—'}
+                    {b.neighborhoods?.name || '—'}
                   </td>
                   <td className="p-4">
                     <Status value={b.status} />
@@ -232,17 +364,18 @@ export function AdminBusinessesPage() {
             Anterior
           </Button>
           <span className="text-sm text-muted">
-            Página {page} de {Math.max(1, Math.ceil((rows?.length ?? 0) / 10))}
+            Página {page} de {Math.max(1, Math.ceil(total / PAGE_SIZE))}
           </span>
           <Button
             variant="outline"
-            disabled={page * 10 >= (rows?.length ?? 0)}
+            disabled={page * PAGE_SIZE >= total}
             onClick={() => setPage(page + 1)}
           >
             Próxima
           </Button>
         </div>
-      </ResourceState>
+          </>
+        )}
       {current && (
         <div
           className="fixed inset-0 z-40 bg-black/30"
@@ -282,12 +415,11 @@ export function AdminBusinessesPage() {
               {[
                 [
                   'Categoria',
-                  d?.categories.find((c) => c.id === current.category_id)?.name,
+                  current.categories?.name,
                 ],
                 [
                   'Bairro',
-                  d?.neighborhoods.find((n) => n.id === current.neighborhood_id)
-                    ?.name,
+                  current.neighborhoods?.name,
                 ],
                 ['Descrição', current.description],
                 ['Endereço', current.address],
@@ -305,8 +437,7 @@ export function AdminBusinessesPage() {
                 ['Site', current.website],
                 [
                   'Responsável',
-                  d?.profiles.find((p) => p.id === current.owner_id)
-                    ?.full_name || 'Não vinculado',
+                  owner.data?.full_name || 'Não vinculado',
                 ],
                 [
                   'Cadastro',
@@ -322,17 +453,9 @@ export function AdminBusinessesPage() {
               ))}
             </dl>
             <div className="flex flex-wrap gap-2">
-              {d?.areas
-                .filter((a) => a.business_id === current.id)
-                .map((a) => (
-                  <span
-                    className="status-chip receiving"
-                    key={a.neighborhood_id}
-                  >
-                    {
-                      d.neighborhoods.find((n) => n.id === a.neighborhood_id)
-                        ?.name
-                    }
+              {(areas.data ?? []).map((area) => (
+                  <span className="status-chip receiving" key={area.neighborhood_id}>
+                    {neighborhoods.data?.find((item) => item.id === area.neighborhood_id)?.name}
                   </span>
                 ))}
             </div>
@@ -355,7 +478,7 @@ export function AdminBusinessesPage() {
                           )
                           .eq('id', current.id),
                       )
-                      resource.reload()
+                      await refresh()
                     })
                   }}
                 />
@@ -398,7 +521,7 @@ export function AdminBusinessesPage() {
           </aside>
         </div>
       )}
-      {create && d && (
+      {create && categories.data && neighborhoods.data && (
         <Modal
           title="Novo cadastro"
           onClose={() => {
@@ -458,7 +581,7 @@ export function AdminBusinessesPage() {
                   { status },
                 )
                 setCreate(false)
-                resource.reload()
+                await refresh()
               })
             }}
           >
@@ -469,7 +592,7 @@ export function AdminBusinessesPage() {
             <Field label="Categoria">
               <Select name="category" required>
                 <option value="">Selecione</option>
-                {d.categories.map((c) => (
+                {categories.data.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -477,14 +600,15 @@ export function AdminBusinessesPage() {
               </Select>
             </Field>
             <Field label="Bairro">
-              <Select name="neighborhood" required>
-                <option value="">Selecione</option>
-                {d.neighborhoods.map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.name}
-                  </option>
-                ))}
-              </Select>
+              <NeighborhoodSelect
+                required
+                name="neighborhood"
+                placeholder="Selecione"
+                ariaLabel="Bairro"
+                neighborhoods={neighborhoods.data}
+                value={draftNeighborhood}
+                onChange={setDraftNeighborhood}
+              />
             </Field>
             <Field label="WhatsApp">
               <Input name="whatsapp" type="tel" required />

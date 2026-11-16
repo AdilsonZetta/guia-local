@@ -16,7 +16,8 @@ import {
   Search,
   X,
 } from 'lucide-react'
-import { publicBusiness, useResource } from '@/lib/public-data'
+import { publicBusiness } from '@/lib/public-data'
+import { useQueryResource } from '@/lib/queries'
 import { applySeo } from '@/lib/seo'
 import { supabase } from '@/lib/supabase'
 import { logVisit, logWhatsAppClick } from '@/lib/analytics'
@@ -26,12 +27,13 @@ import {
   BrandTile,
   Rating,
   ReceivingChip,
+  ratingView,
 } from '@/components/business/BusinessIdentity'
+import { CardSkeleton } from '@/components/ui/Skeleton'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Spinner } from '@/components/ui/Spinner'
 import { LoadError, MissingBusiness, Notice } from '@/components/PageContent'
 
 function visitSource() {
@@ -70,7 +72,10 @@ export function BusinessProfilePage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const visited = useRef('')
-  const resource = useResource(async () => {
+  const resource = useQueryResource({
+    queryKey: ['business-profile', slug],
+    staleTime: 60_000,
+    queryFn: async () => {
     const business = await publicBusiness(slug)
     if (!business) return null
     const [hours, areas, services, photos, reviews] = await Promise.all([
@@ -129,7 +134,8 @@ export function BusinessProfilePage() {
       authors: authors.data ?? [],
       neighborhoods: neighborhoods.data ?? [],
     }
-  }, [slug])
+  },
+  })
   useEffect(() => {
     if (!lightbox) return
     const close = (event: KeyboardEvent) => {
@@ -245,7 +251,7 @@ export function BusinessProfilePage() {
         )
     }
   }
-  if (resource.loading) return <Spinner />
+  if (resource.loading) return <CardSkeleton count={1} />
   if (resource.error)
     return (
       <div className="mx-auto max-w-6xl p-6">
@@ -376,10 +382,7 @@ export function BusinessProfilePage() {
           <p className="mb-1 text-lg text-muted">
             {business.categories?.name} • {city}, MG
           </p>
-          <Rating
-            rating={business.business_stats?.avg_rating}
-            count={business.business_stats?.review_count}
-          />
+          <Rating {...ratingView(business)} />
         </div>
         <div className="ml-auto flex flex-wrap gap-3">
           <Button

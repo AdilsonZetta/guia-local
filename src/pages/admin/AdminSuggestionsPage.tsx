@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useResource } from '@/lib/public-data'
 import { slugify } from '@/lib/utils'
 import { all, checked, useAction, audit } from '@/lib/management'
+import { searchBusinesses } from '@/lib/business-search'
 import {
   ResourceState,
   Status,
@@ -23,34 +25,36 @@ export function AdminSuggestionsPage() {
   const [notes, setNotes] = useState('')
   const [duplicates, setDuplicates] = useState(false)
   const resource = useResource(async () => {
-    const [suggestions, categories, neighborhoods, businesses] =
-      await Promise.all([
-        all('suggestions'),
-        all('categories'),
-        all('neighborhoods'),
-        all('businesses'),
-      ])
+    const [suggestions, categories, neighborhoods] = await Promise.all([
+      all('suggestions'),
+      all('categories'),
+      all('neighborhoods'),
+    ])
     return {
       suggestions: suggestions.sort((a, b) =>
         b.created_at.localeCompare(a.created_at),
       ),
       categories,
       neighborhoods,
-      businesses,
     }
   })
   const d = resource.data
   const rows =
     d?.suggestions.filter((s) => !status || s.status === status) ?? []
   const current = d?.suggestions.find((s) => s.id === selected) ?? rows[0]
-  const similar = current
-    ? d?.businesses.filter(
-        (b) =>
-          slugify(b.name).includes(
-            slugify(current.business_name).split('-')[0] || '',
-          ) || slugify(current.business_name).includes(slugify(b.name)),
-      )
-    : []
+  const similarQuery = useQuery({
+    queryKey: ['similar-businesses', current?.id, current?.business_name],
+    enabled: Boolean(duplicates && current?.business_name),
+    staleTime: 30_000,
+    queryFn: () =>
+      searchBusinesses({
+        query: current!.business_name,
+        includeInactive: true,
+        limit: 8,
+        offset: 0,
+      }),
+  })
+  const similar = similarQuery.data?.rows ?? []
   async function convert() {
     if (!current) return
     const fresh = await checked(
@@ -206,7 +210,9 @@ export function AdminSuggestionsPage() {
                   </Button>
                   {duplicates && (
                     <div className="rounded-xl bg-brand-soft p-4">
-                      {similar?.length ? (
+                      {similarQuery.isLoading ? (
+                        <p>Buscando cadastros semelhantes…</p>
+                      ) : similar.length ? (
                         similar.map((b) => (
                           <Link
                             key={b.id}

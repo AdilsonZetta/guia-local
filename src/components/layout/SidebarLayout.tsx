@@ -7,7 +7,7 @@ import {
   X,
   LogOut,
 } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { Suspense, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthProvider'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { checked } from '@/lib/management'
 import { GlobalAdminSearch, NotificationBell } from './ManagementTools'
 import { MeshBackground } from './MeshBackground'
+import { RouteFallback } from '@/components/ui/Skeleton'
 export type SidebarItem = {
   to: string
   label: string
@@ -187,7 +188,9 @@ export function SidebarLayout({
           key={location.pathname + location.search}
           className="management-content"
         >
-          <Outlet />
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

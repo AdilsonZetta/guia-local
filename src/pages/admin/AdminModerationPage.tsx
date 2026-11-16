@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useResource } from '@/lib/public-data'
 import type { ReviewStatus } from '@/lib/database.types'
 import { all, checked, useAction, audit } from '@/lib/management'
+import { businessNames } from '@/lib/business-search'
 import {
   ResourceState,
   Status,
@@ -27,12 +28,12 @@ export function AdminModerationPage() {
   )
   const [rules, setRules] = useState(false)
   const resource = useResource(async () => {
-    const [reviews, businesses, profiles, services] = await Promise.all([
+    const [reviews, profiles, services] = await Promise.all([
       all('reviews'),
-      all('businesses'),
       all('profiles'),
       all('services'),
     ])
+    const businesses = await businessNames(reviews.map((review) => review.business_id))
     return {
       reviews: reviews.sort((a, b) => b.created_at.localeCompare(a.created_at)),
       businesses,

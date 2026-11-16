@@ -22,7 +22,38 @@ async function signIn(email) {
   return data
 }
 
+async function checkSearchRpcs() {
+  const home = await supabase.rpc('home_snapshot')
+  const missing =
+    home.error &&
+    (home.error.code === 'PGRST202' ||
+      /could not find the function|schema cache/i.test(home.error.message || ''))
+  if (missing) {
+    console.log('SKIP  search RPCs — aplique as migrações 20261116190000 e 20261116200000')
+    return
+  }
+  ok(
+    'home_snapshot',
+    !home.error && home.data && typeof home.data.business_count === 'number',
+    home.error?.message,
+  )
+  const search = await supabase.rpc('search_businesses', { p_limit: 20, p_offset: 0 })
+  const rows = search.data?.rows
+  ok(
+    'search_businesses pagina no máximo 20',
+    !search.error && Array.isArray(rows) && rows.length <= 20,
+    search.error?.message,
+  )
+  const counts = await supabase.rpc('business_admin_counts')
+  ok(
+    'business_admin_counts',
+    !counts.error && counts.data && typeof counts.data.total === 'number',
+    counts.error?.message,
+  )
+}
+
 if (mode === 'signup') {
+  await checkSearchRpcs()
   const stamp = Date.now()
   const clientEmail = `guia-local-test-client-${stamp}@example.com`
   const bizEmail = `guia-local-test-biz-${stamp}@example.com`
@@ -68,6 +99,7 @@ if (mode === 'signup') {
 }
 
 if (mode === 'flow') {
+  await checkSearchRpcs()
   const clientEmail = process.env.TEST_CLIENT_EMAIL
   const bizEmail = process.env.TEST_BIZ_EMAIL
   const adminEmail = process.env.TEST_ADMIN_EMAIL

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { catalog, useResource } from '@/lib/public-data'
+import { friendlyError, useCatalog } from '@/lib/queries'
+import { NeighborhoodSelect } from '@/components/ui/NeighborhoodSelect'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -11,7 +12,8 @@ import { LoadError, Notice } from '@/components/PageContent'
 
 export function SuggestionForm() {
   const { user, profile } = useAuth()
-  const refs = useResource(catalog)
+  const refs = useCatalog()
+  const [neighborhoodId, setNeighborhoodId] = useState('')
   const [name, setName] = useState('')
   const [contact, setContact] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,8 +54,11 @@ export function SuggestionForm() {
       setBusy(false)
     }
   }
-  if (refs.loading) return <Spinner />
-  if (refs.error) return <LoadError message={refs.error} retry={refs.reload} />
+  if (refs.isLoading) return <Spinner />
+  if (refs.isError)
+    return (
+      <LoadError message={friendlyError(refs.error)} retry={() => void refs.refetch()} />
+    )
   if (success)
     return (
       <Card className="space-y-4 p-8">
@@ -90,14 +95,15 @@ export function SuggestionForm() {
             </Select>
           </Field>
           <Field label="Bairro">
-            <Select name="neighborhood_id" aria-label="Bairro">
-              <option value="">Selecione um bairro</option>
-              {refs.data?.neighborhoods.map((n) => (
-                <option key={n.id} value={n.id}>
-                  {n.name}
-                </option>
-              ))}
-            </Select>
+            <NeighborhoodSelect
+              name="neighborhood_id"
+              valueKey="id"
+              ariaLabel="Bairro"
+              placeholder="Selecione um bairro"
+              neighborhoods={refs.data?.neighborhoods ?? []}
+              value={neighborhoodId}
+              onChange={setNeighborhoodId}
+            />
           </Field>
         </div>
         <Field label="Telefone da empresa">

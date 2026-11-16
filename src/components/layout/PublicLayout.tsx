@@ -9,13 +9,14 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { NotificationBell } from './ManagementTools'
 import { MeshBackground } from './MeshBackground'
 import { applySeo } from '@/lib/seo'
+import { RouteFallback } from '@/components/ui/Skeleton'
 const links = [
   { to: '/busca', label: 'Explorar', icon: Search },
   { to: '/morador/favoritos', label: 'Favoritos', icon: Heart },
@@ -156,7 +157,9 @@ export function PublicLayout() {
         )}
       </header>
       <main className="flex-1 pb-20 md:pb-0">
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className="site-container flex flex-wrap justify-between gap-3 py-5 text-xs text-muted">
         <span>

@@ -27,64 +27,6 @@ export async function catalog() {
   if (neighborhoods.error) throw neighborhoods.error
   return { categories: categories.data, neighborhoods: neighborhoods.data }
 }
-export async function enrichBusinesses(
-  rows: Tables<'businesses'>[],
-): Promise<PublicBusiness[]> {
-  if (!rows.length) return []
-  const [refs, stats, areas] = await Promise.all([
-    catalog(),
-    supabase
-      .from('business_stats')
-      .select('*')
-      .in(
-        'business_id',
-        rows.map((row) => row.id),
-      ),
-    supabase
-      .from('business_service_areas')
-      .select('*')
-      .in(
-        'business_id',
-        rows.map((r) => r.id),
-      ),
-  ])
-  if (areas.error) throw areas.error
-  if (stats.error) throw stats.error
-  return rows.map((row) => ({
-    ...row,
-    serviceAreas: refs.neighborhoods.filter((n) =>
-      areas.data.some(
-        (a) => a.business_id === row.id && a.neighborhood_id === n.id,
-      ),
-    ),
-    categories: refs.categories.find((c) => c.id === row.category_id) ?? null,
-    neighborhoods:
-      refs.neighborhoods.find((n) => n.id === row.neighborhood_id) ?? null,
-    business_stats: stats.data.find((s) => s.business_id === row.id) ?? null,
-  }))
-}
-export async function publicBusinesses(featured = false) {
-  const rows: Tables<'businesses'>[] = []
-  for (let offset = 0; ; offset += 500) {
-    let query = supabase
-      .from('businesses')
-      .select('*')
-      .eq('status', 'active')
-      .eq('is_paused', false)
-      .order('id')
-      .range(offset, offset + 499)
-    if (featured) query = query.eq('featured', true)
-    const { data, error } = await query
-    if (error) throw error
-    rows.push(...data)
-    if (data.length < 500) break
-  }
-  // Chunk stats lookups to keep request URLs small.
-  const result: PublicBusiness[] = []
-  for (let i = 0; i < rows.length; i += 100)
-    result.push(...(await enrichBusinesses(rows.slice(i, i + 100))))
-  return result
-}
 export async function publicBusiness(slug: string) {
   const { data, error } = await supabase
     .from('businesses')
@@ -94,7 +36,29 @@ export async function publicBusiness(slug: string) {
     .eq('is_paused', false)
     .maybeSingle()
   if (error) throw error
-  return data ? (await enrichBusinesses([data]))[0] : null
+  if (!data) return null
+  const [category, neighborhood, stats] = await Promise.all([
+    data.category_id
+      ? supabase.from('categories').select('*').eq('id', data.category_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    data.neighborhood_id
+      ? supabase
+          .from('neighborhoods')
+          .select('*')
+          .eq('id', data.neighborhood_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase.from('business_stats').select('*').eq('business_id', data.id).maybeSingle(),
+  ])
+  if (category.error) throw category.error
+  if (neighborhood.error) throw neighborhood.error
+  if (stats.error) throw stats.error
+  return {
+    ...data,
+    categories: category.data,
+    neighborhoods: neighborhood.data,
+    business_stats: stats.data,
+  }
 }
 export function useResource<T>(
   loader: () => Promise<T>,
