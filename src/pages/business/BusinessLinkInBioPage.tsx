@@ -23,6 +23,7 @@ import { Modal } from '@/components/ui/Modal'
 import { WhatsAppIcon } from '@/components/WhatsAppIcon'
 import { CategoryIcon } from '@/components/CategoryIcon'
 import { checked, useAction, publicUrl, upload } from '@/lib/management'
+import { tileTone } from '@/components/business/BusinessIdentity'
 import {
   BusinessGate,
   ResourceState,
@@ -34,33 +35,33 @@ import {
 const themes = {
   forest: {
     name: 'Claro',
-    background: '#f2faf6',
-    card: '#0F7B5A',
-    accent: '#0e1536',
+    background: 'var(--color-canvas)',
+    card: 'var(--color-green)',
+    accent: 'var(--color-ink)',
   },
   dark: {
     name: 'Escuro',
-    background: '#053e30',
-    card: '#0F7B5A',
-    accent: '#ffffff',
+    background: 'var(--color-ink)',
+    card: 'var(--color-green)',
+    accent: 'var(--color-canvas)',
   },
   rose: {
-    name: 'Personalizado',
-    background: '#fff0f3',
-    card: '#a93862',
-    accent: '#702844',
+    name: 'Laranja',
+    background: 'var(--color-brand-soft)',
+    card: 'var(--color-orange)',
+    accent: 'var(--color-ink)',
   },
   ocean: {
-    name: 'Oceano',
-    background: '#e9f5fc',
-    card: '#126b91',
-    accent: '#154b65',
+    name: 'Verde',
+    background: 'var(--color-green-wash)',
+    card: 'var(--color-green-strong)',
+    accent: 'var(--color-ink)',
   },
   sand: {
-    name: 'Areia',
-    background: '#faf2e5',
-    card: '#876039',
-    accent: '#62472c',
+    name: 'Suave',
+    background: 'var(--color-canvas)',
+    card: 'var(--color-orange-soft)',
+    accent: 'var(--color-ink)',
   },
 }
 type DraftButton = {
@@ -76,7 +77,7 @@ function ButtonIcon({ button }: { button: Pick<DraftButton, 'icon' | 'url'> }) {
   return isWhatsAppUrl(button.url) ? (
     <WhatsAppIcon size={24} />
   ) : button.icon === 'instagram' ? (
-    <span className="text-xl text-fuchsia-500">◎</span>
+    <span className="text-xl text-orange">◎</span>
   ) : button.icon === 'star' ? (
     <Star size={24} />
   ) : button.icon === 'link' ? (
@@ -182,8 +183,8 @@ function LinkForm({
   }
   const logoTile = (
     <span
-      className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white"
-      style={{ background: b.brand_color || '#ff7d85' }}
+      className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl"
+      style={tileTone(b.name || 'guia')}
     >
       {logo ? (
         <img src={logo} alt="Logo" className="h-full w-full object-cover" />

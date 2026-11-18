@@ -77,7 +77,7 @@ export function AdminDashboardPage() {
               </section>
               <section className="management-section space-y-5">
                 <h2>Precisa da sua atenção</h2>
-                <div className="rounded-xl bg-orange-50 p-5">
+                <div className="rounded-xl bg-brand-soft p-5">
                   <strong className="text-3xl">
                     {d.counts.pending}
                   </strong>

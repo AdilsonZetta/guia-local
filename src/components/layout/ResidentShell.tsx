@@ -10,10 +10,10 @@ const items = [
 ]
 export function ResidentShell() {
   return (
-    <div className="site-container resident-layout grid items-start gap-7 py-8 lg:grid-cols-[245px_1fr]">
-      <aside className="min-w-0 rounded-xl border border-line bg-white p-5 lg:sticky lg:top-24">
-        <h2 className="mb-5 text-2xl font-extrabold">Minha área</h2>
-        <nav className="flex gap-2 overflow-x-auto lg:flex-col">
+    <div className="site-container resident-layout grid min-w-0 items-start gap-4 py-4 sm:gap-7 sm:py-8 lg:grid-cols-[245px_1fr]">
+      <aside className="min-w-0 max-w-full rounded-xl border border-line bg-white p-3 sm:p-5 lg:sticky lg:top-24">
+        <h2 className="mb-3 text-xl font-extrabold sm:mb-5 sm:text-2xl">Minha área</h2>
+        <nav className="flex max-w-full gap-2 overflow-x-auto lg:flex-col">
           {items.map((item) => (
             <NavLink
               key={item.to}

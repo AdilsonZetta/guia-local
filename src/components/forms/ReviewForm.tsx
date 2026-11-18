@@ -91,7 +91,7 @@ export function ReviewForm({
                 className="rounded-lg p-1 focus-visible:outline-2 focus-visible:outline-brand"
               >
                 <Star
-                  className={`h-10 w-10 md:h-12 md:w-12 ${n <= rating ? 'fill-amber-500 text-amber-500' : 'text-slate-300'}`}
+                  className={`h-10 w-10 md:h-12 md:w-12 ${n <= rating ? 'fill-green-strong text-green-strong' : 'text-line'}`}
                 />
               </button>
             ))}

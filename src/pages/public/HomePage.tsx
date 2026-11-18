@@ -152,7 +152,7 @@ export function HomePage() {
         ) : (
           <>
             <section
-              className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+              className="category-grid grid grid-cols-4 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6"
               aria-label="Categorias"
             >
               {(catalog.data?.categories ?? [])
@@ -165,7 +165,7 @@ export function HomePage() {
                     className="category-chip"
                   >
                     <span className="category-chip-icon">
-                      <CategoryIcon name={category.icon} className="h-6 w-6 text-ink" />
+                      <CategoryIcon name={category.icon} className="h-5 w-5 text-ink sm:h-6 sm:w-6" />
                     </span>
                     <span>{category.name}</span>
                   </Link>
@@ -173,10 +173,10 @@ export function HomePage() {
             </section>
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-2xl font-extrabold md:text-3xl">
+                <h2 className="min-w-0 text-xl font-extrabold sm:text-2xl md:text-3xl">
                   Conheça negócios da sua região
                 </h2>
-                <Link to="/busca" className="flex shrink-0 items-center gap-2 text-sm text-brand underline">
+                <Link to="/busca" className="flex min-h-11 shrink-0 items-center gap-1 text-sm text-brand underline">
                   Ver empresas <ArrowRight size={18} />
                 </Link>
               </div>
@@ -204,15 +204,15 @@ export function HomePage() {
             </section>
           </>
         )}
-        <section className="glass-card flex flex-wrap items-center gap-5 px-6 py-4">
-          <UsersRound size={40} className="text-brand" />
-          <div>
+        <section className="glass-card flex flex-col items-start gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-5 sm:px-6">
+          <UsersRound aria-hidden="true" className="h-6 w-6 text-brand sm:h-10 sm:w-10" />
+          <div className="min-w-0">
             <h2 className="text-lg font-extrabold">
               Conhece um negócio que ainda não está aqui?
             </h2>
             <p className="text-muted">Ajude a sua cidade a ficar mais completa.</p>
           </div>
-          <Link to="/indicar" className="btn-outline ml-auto">
+          <Link to="/indicar" className="btn-outline w-full sm:ml-auto sm:w-auto">
             <Send size={20} />
             Indicar empresa
           </Link>

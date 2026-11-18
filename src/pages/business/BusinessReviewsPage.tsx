@@ -78,20 +78,20 @@ function Reviews() {
             <p className="text-7xl font-extrabold">
               {average.toFixed(1).replace('.', ',')}
             </p>
-            <p className="text-3xl text-amber-500">★★★★★</p>
+            <p className="text-3xl text-green-strong">★★★★★</p>
             <p className="text-muted">{published.length} avaliações</p>
             {[5, 4, 3, 2, 1].map((n) => (
               <div className="flex items-center gap-3 text-sm" key={n}>
                 <span className="w-20 text-muted">{n} estrelas</span>
                 <progress
-                  className="h-3 w-full accent-amber-400"
+                  className="h-3 w-full accent-green"
                   max={published.length || 1}
                   value={published.filter((r) => r.rating === n).length}
                 />
                 <span>{published.filter((r) => r.rating === n).length}</span>
               </div>
             ))}
-            <div className="rounded-xl bg-orange-50 p-5">
+            <div className="rounded-xl bg-brand-soft p-5">
               <strong className="text-3xl">{unanswered}</strong>
               <p className="text-muted">sem resposta</p>
             </div>
@@ -148,9 +148,9 @@ function Reviews() {
                     <h2 className="font-bold">
                       {resource.data?.authors.find((a) => a.id === r.user_id)
                         ?.full_name || 'Morador'}{' '}
-                      <span className="ml-5 text-amber-500">
+                      <span className="ml-5 text-green-strong">
                         {'★'.repeat(r.rating)}
-                        <span className="text-slate-300">
+                        <span className="text-line">
                           {'★'.repeat(5 - r.rating)}
                         </span>
                       </span>

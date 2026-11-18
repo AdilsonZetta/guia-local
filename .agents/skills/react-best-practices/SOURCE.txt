@@ -1,0 +1,6 @@
+upstream: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
+repository: vercel-labs/agent-skills
+revision: 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62
+path: skills/react-best-practices
+license: MIT, declared in SKILL.md frontmatter (author: vercel). Parent repo had no LICENSE file at this revision; LICENSE in this folder records that declaration.
+fetched: 2026-11-17
