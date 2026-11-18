@@ -31,15 +31,85 @@ export function formatPhone(phone: string | null | undefined) {
   return phone
 }
 
+/**
+ * Brazilian phone as `55` + DDD + subscriber, or null when it is not a
+ * callable national number. Strips formatting, a leading trunk 0, and a
+ * duplicated country code. DDD 55 (Santa Maria) is kept as an area code.
+ */
+export function brazilPhoneDigits(value: string | null | undefined) {
+  if (!value) return null
+  let digits = value.replace(/\D/g, '').replace(/^0+/, '')
+  if (!digits) return null
+
+  // Country code written with the national trunk prefix: 55 0 34 ...
+  if (digits.startsWith('550') && (digits.length === 13 || digits.length === 14)) {
+    digits = `55${digits.slice(3)}`
+  }
+  // Country code typed twice: 55 55 34 99999-9999.
+  if (/^5555\d{10,11}$/.test(digits)) digits = digits.slice(2)
+
+  const international =
+    digits.startsWith('55') && (digits.length === 12 || digits.length === 13)
+  if (!international) {
+    if (digits.length !== 10 && digits.length !== 11) return null
+    digits = `55${digits}`
+  }
+
+  const national = digits.slice(2)
+  if (!/^[1-9]{2}(?:9\d{8}|\d{8})$/.test(national)) return null
+  return digits
+}
+
+export function isBrazilMobile(digits: string) {
+  return /^55[1-9]{2}9\d{8}$/.test(digits)
+}
+
+export function whatsappGreeting(businessName: string) {
+  const name = businessName.trim()
+  return name
+    ? `Olá! Vi ${name} no Guia Local e gostaria de mais informações.`
+    : 'Olá! Vi vocês no Guia Local e gostaria de mais informações.'
+}
+
 export function whatsappLink(
   whatsapp: string | null | undefined,
   message?: string,
 ) {
-  if (!whatsapp) return null
-  const digits = whatsapp.replace(/\D/g, '')
-  const phone = digits.startsWith('55') ? digits : `55${digits}`
+  const phone = brazilPhoneDigits(whatsapp)
+  if (!phone || !isBrazilMobile(phone)) return null
   const url = `https://wa.me/${phone}`
   return message ? `${url}?text=${encodeURIComponent(message)}` : url
+}
+
+export function telLink(value: string | null | undefined) {
+  if (!value) return null
+  const digits = value.replace(/\D/g, '')
+  if (!digits) return null
+  const service = digits.replace(/^0+/, '')
+  if (/^(?:800\d{7}|300\d{7}|4004\d{4})$/.test(service)) return `tel:0${service}`
+  const phone = brazilPhoneDigits(value)
+  return phone ? `tel:+${phone}` : null
+}
+
+export function businessWhatsappHref(business: {
+  name: string
+  phone?: string | null
+  whatsapp?: string | null
+  show_whatsapp?: boolean | null
+}) {
+  if (business.show_whatsapp === false) return null
+  const message = whatsappGreeting(business.name)
+  return (
+    whatsappLink(business.whatsapp, message) ??
+    whatsappLink(business.phone, message)
+  )
+}
+
+export function businessTelHref(business: {
+  phone?: string | null
+  whatsapp?: string | null
+}) {
+  return telLink(business.phone) ?? telLink(business.whatsapp)
 }
 
 export function isReceivingNow(business: {

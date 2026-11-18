@@ -1,6 +1,7 @@
 import type { SVGProps } from 'react'
 export function WhatsAppIcon({
-  size = 22,
+  size = 18,
+  className,
   ...props
 }: SVGProps<SVGSVGElement> & { size?: number }) {
   return (
@@ -10,10 +11,12 @@ export function WhatsAppIcon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
+      overflow="visible"
       aria-hidden="true"
+      className={className ? `shrink-0 ${className}` : 'shrink-0'}
       {...props}
     >
       <path d="M21 11.5a9 9 0 0 1-13.3 8L3 21l1.5-4.7A9 9 0 1 1 21 11.5Z" />

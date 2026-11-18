@@ -184,7 +184,7 @@ export function LinkInBioPage() {
                 ) : (
                   <CategoryIcon name={button.icon} className="h-7 w-7" />
                 )}
-                <span className="flex-1">{button.label}</span>
+                <span className="min-w-0 flex-1 truncate">{button.label}</span>
                 <ChevronRight size={25} />
               </a>
             )
