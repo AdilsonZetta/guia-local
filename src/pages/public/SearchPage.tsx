@@ -136,7 +136,7 @@ export function SearchPage() {
     },
   )
   return (
-    <div className="site-container space-y-6 py-6">
+    <div className="site-container space-y-4 py-4 sm:space-y-6 sm:py-6">
       <SearchBar
         live
         neighborhoods={catalog.data?.neighborhoods || []}
@@ -145,8 +145,8 @@ export function SearchPage() {
         onSearch={applySearch}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[310px_1fr]">
-        <Card className="p-5">
-          <h2 className="mb-5 text-2xl font-extrabold">Filtrar resultados</h2>
+        <Card className="p-4 sm:p-5">
+          <h2 className="mb-4 text-xl font-extrabold sm:mb-5 sm:text-2xl">Filtrar resultados</h2>
           <form className="space-y-4" onSubmit={submit}>
             <Field label="Categoria">
               <Select
@@ -232,14 +232,14 @@ export function SearchPage() {
             <>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-extrabold md:text-4xl">
+                  <h1 className="break-words text-3xl font-extrabold md:text-4xl">
                     {params.get('q') || category?.name || 'Empresas e serviços'} em {cityName}
                   </h1>
-                  <p className="mt-1 text-xl text-muted">
+                  <p className="mt-1 text-base text-muted sm:text-xl">
                     {total.toLocaleString('pt-BR')} opções para você conhecer
                   </p>
                 </div>
-                <label className="flex shrink-0 items-center gap-3 whitespace-nowrap text-sm text-muted">
+                <label className="flex w-full min-w-0 items-center gap-2 text-sm text-muted sm:w-auto sm:shrink-0 sm:gap-3">
                   Ordenar por:
                   <Select
                     aria-label="Ordenar por"

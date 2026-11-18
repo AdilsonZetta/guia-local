@@ -172,9 +172,9 @@ export function LoginPage() {
       </div>
     )
   return (
-    <div className="login-stage site-container grid items-stretch gap-8 py-10 lg:grid-cols-2">
-      <section className="login-story relative overflow-hidden p-8 md:p-12">
-        <MapPin className="mb-8 h-14 w-14 text-brand" />
+    <div className="login-stage site-container grid items-stretch gap-4 py-4 sm:gap-8 sm:py-10 lg:grid-cols-2">
+      <section className="login-story relative overflow-hidden p-5 sm:p-8 md:p-12">
+        <MapPin aria-hidden="true" className="mb-4 h-8 w-8 text-brand sm:mb-8 sm:h-14 sm:w-14" />
         <h2 className="text-4xl font-extrabold md:text-5xl">
           Sua cidade tem boas indicações.
         </h2>

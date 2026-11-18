@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { catalog, useResource } from '@/lib/public-data'
 import { supabase } from '@/lib/supabase'
 import { checked } from '@/lib/management'
+import { tileTone } from '@/components/business/BusinessIdentity'
 import { GlobalAdminSearch, NotificationBell } from './ManagementTools'
 import { MeshBackground } from './MeshBackground'
 import { RouteFallback } from '@/components/ui/Skeleton'
@@ -79,7 +80,7 @@ export function SidebarLayout({
             {item.label}
           </span>
           {item.label === 'Avaliações' && !admin && !!count.data?.length && (
-            <span className="rounded-full bg-emerald-100 px-2 text-sm font-bold text-brand">
+            <span className="rounded-full bg-green-soft px-2 text-sm font-bold text-brand">
               {count.data.length}
             </span>
           )}
@@ -92,14 +93,17 @@ export function SidebarLayout({
       <MeshBackground />
       <aside className="management-sidebar hidden md:flex md:flex-col">
         <Link to={homeTo} className="flex items-center gap-3 px-6 py-5">
-          <MapPin className="brand-pin h-10 w-10 fill-brand text-brand" />
+          <MapPin className="brand-pin h-10 w-10 fill-ink text-ink" />
           <span>
             <strong className="block text-xl font-extrabold">Guia Local</strong>
             <small className="text-muted">{title}</small>
           </span>
         </Link>
         <div className="mx-3 my-3 flex items-center gap-3 rounded-lg border border-line p-2">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-rose-400 text-white">
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+            style={tileTone(admin ? name : business?.name || 'guia')}
+          >
             {business?.logo_url && !admin ? (
               <img
                 src={business.logo_url}
@@ -156,11 +160,12 @@ export function SidebarLayout({
       <div className="management-main min-w-0">
         <header className="management-topbar flex items-center gap-5 px-6">
           <button
-            className="md:hidden"
-            aria-label="Menu"
+            className="inline-flex h-11 w-11 items-center justify-center md:hidden"
+            aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
-            {open ? <X /> : <Menu />}
+            {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
           <div className="flex items-center gap-3 text-sm">
             <Home size={20} />

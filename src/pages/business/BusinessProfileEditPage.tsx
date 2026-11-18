@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/Card'
 import { Field, Select, Textarea, Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Photo } from '@/components/Photo'
-import { Rating, ratingView } from '@/components/business/BusinessIdentity'
+import { Rating, ratingView, tileTone } from '@/components/business/BusinessIdentity'
 import { checked, useAction, upload } from '@/lib/management'
 import {
   BusinessGate,
@@ -137,7 +137,10 @@ function Editor() {
                   Informações do negócio
                 </h2>
                 <div className="flex items-center gap-5">
-                  <span className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-rose-400 text-white">
+                  <span
+                    className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl"
+                    style={tileTone(form.name || 'guia')}
+                  >
                     {form.logo_url ? (
                       <img
                         className="h-full w-full object-cover"
@@ -318,8 +321,8 @@ function Editor() {
                   <div className="p-3 space-y-4">
                     <div className="flex gap-4">
                       <span
-                        className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl text-white"
-                        style={{ background: form.brand_color || '#ff7d85' }}
+                        className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                        style={tileTone(form.name || 'guia')}
                       >
                         {form.logo_url ? (
                           <img

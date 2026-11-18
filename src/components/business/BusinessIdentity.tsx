@@ -1,7 +1,18 @@
 import { Star } from 'lucide-react'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { cn } from '@/lib/utils'
 import type { Tables } from '@/lib/database.types'
 import { isReceivingNow } from '@/lib/utils'
+
+/** Alternating Ubox tints. Ignores stored pink brand colors without writing to the database. */
+export function tileTone(seed: string) {
+  let hash = 0
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 33 + seed.charCodeAt(i)) >>> 0
+  return hash % 2 === 0
+    ? { background: 'var(--color-green-soft)', color: 'var(--color-ink)' }
+    : { background: 'var(--color-orange-soft)', color: 'var(--color-ink)' }
+}
+
 export function BrandTile({
   business,
   className = '',
@@ -9,10 +20,11 @@ export function BrandTile({
   business: Pick<Tables<'businesses'>, 'brand_color' | 'brand_icon' | 'name'>
   className?: string
 }) {
+  const tone = tileTone(business.name || 'guia')
   return (
     <span
       className={`brand-tile ${className}`}
-      style={{ backgroundColor: business.brand_color || '#0F7B5A' }}
+      style={{ backgroundColor: tone.background, color: tone.color }}
       aria-label={business.name}
     >
       <CategoryIcon name={business.brand_icon} className="h-3/5 w-3/5" />
@@ -40,16 +52,18 @@ export function Rating({
   rating,
   count = 0,
   source = 'platform',
+  className = '',
 }: {
   rating?: number | null
   count?: number | null
   source?: 'platform' | 'google' | 'none'
+  className?: string
 }) {
   const reviews = count ?? 0
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
-      <strong>
+    <span className={cn('inline-flex flex-wrap items-center gap-1.5', className)}>
+      <Star aria-hidden="true" className="h-5 w-5 fill-green-strong text-green-strong" />
+      <strong className="tabular-nums">
         {rating
           ? Number(rating).toLocaleString('pt-BR', {
               minimumFractionDigits: 1,

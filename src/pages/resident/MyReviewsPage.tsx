@@ -156,7 +156,7 @@ export function MyReviewsPage() {
                   <p className="text-sm text-muted">
                     {new Date(r.created_at).toLocaleDateString('pt-BR')} ·{' '}
                     <span
-                      className="text-amber-500"
+                      className="text-green-strong"
                       aria-label={`${r.rating} estrelas`}
                     >
                       {'★'.repeat(r.rating)}

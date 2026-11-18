@@ -178,7 +178,7 @@ export function AdminModerationPage() {
                         )}
                       </p>
                     </div>
-                    <span className="text-2xl text-amber-500">
+                    <span className="text-2xl text-green-strong">
                       {'★'.repeat(current.rating)}
                     </span>
                   </div>
@@ -196,7 +196,7 @@ export function AdminModerationPage() {
                     “{current.body}”
                   </blockquote>
                   {(current.report_reason || current.flag_reason) && (
-                    <div className="rounded-xl border border-orange-100 bg-orange-50 p-5">
+                    <div className="rounded-xl border border-orange-soft bg-brand-soft p-5">
                       <strong>Motivo da denúncia</strong>
                       <p className="mt-2">
                         {current.report_reason || current.flag_reason}

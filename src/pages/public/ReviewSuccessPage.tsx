@@ -43,13 +43,13 @@ export function ReviewSuccessPage() {
   if (!review) return <Navigate to={`/empresa/${slug}/avaliar`} replace />
   return (
     <section className="success-page px-4 py-12 text-center">
-      <span className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-emerald-100 text-brand">
+      <span className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-green-soft text-brand">
         <Check size={75} strokeWidth={4} />
       </span>
       <h1 className="mt-5 text-4xl font-extrabold md:text-5xl">
         Sua avaliação foi enviada!
       </h1>
-      <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-amber-700">
+      <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-orange-soft px-4 py-2 text-ink">
         <Clock size={22} />
         Em análise
       </span>
@@ -72,7 +72,7 @@ export function ReviewSuccessPage() {
           <div>
             <h2 className="text-2xl font-extrabold">{business.name}</h2>
             <p className="text-muted">{business.categories?.name}</p>
-            <p className="my-1 text-2xl text-amber-500">
+            <p className="my-1 text-2xl text-green-strong">
               {'★'.repeat(review.rating)}
             </p>
             <p className="text-sm text-muted">

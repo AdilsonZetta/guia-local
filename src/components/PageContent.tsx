@@ -31,7 +31,7 @@ export function Notice({
   return (
     <div
       role={error ? 'alert' : 'status'}
-      className={`rounded-xl p-4 text-sm ${error ? 'bg-orange-50 text-danger' : 'bg-brand-soft text-brand-dark'}`}
+      className={`rounded-xl p-4 text-sm ${error ? 'bg-brand-soft text-danger' : 'bg-brand-soft text-brand-dark'}`}
     >
       {children}
     </div>

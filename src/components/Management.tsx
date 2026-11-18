@@ -230,12 +230,12 @@ export function ActivityChart({
           <AreaChart data={data}>
             <defs>
               <linearGradient id="fillVisits" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#09090b" stopOpacity={0.5} />
-                <stop offset="100%" stopColor="#09090b" stopOpacity={0.04} />
+                <stop offset="0%" stopColor="var(--color-ink)" stopOpacity={0.5} />
+                <stop offset="100%" stopColor="var(--color-ink)" stopOpacity={0.04} />
               </linearGradient>
               <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#52525b" stopOpacity={0.42} />
-                <stop offset="100%" stopColor="#52525b" stopOpacity={0.03} />
+                <stop offset="0%" stopColor="var(--color-muted)" stopOpacity={0.42} />
+                <stop offset="100%" stopColor="var(--color-muted)" stopOpacity={0.03} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#ffffff80" />
@@ -244,14 +244,14 @@ export function ActivityChart({
               axisLine={false}
               tickLine={false}
               minTickGap={50}
-              tick={{ fontSize: 12, fill: '#53627d' }}
+              tick={{ fontSize: 12, fill: 'var(--color-muted)' }}
             />
             <YAxis
               allowDecimals={false}
               axisLine={false}
               tickLine={false}
               width={38}
-              tick={{ fontSize: 12, fill: '#53627d' }}
+              tick={{ fontSize: 12, fill: 'var(--color-muted)' }}
             />
             <Tooltip />
             <Legend
@@ -268,7 +268,7 @@ export function ActivityChart({
               dataKey="total"
               name="Visitas"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
-              stroke="#09090b"
+              stroke="var(--color-ink)"
               fill="url(#fillVisits)"
               fillOpacity={1}
               strokeWidth={2}
@@ -281,7 +281,7 @@ export function ActivityChart({
               dataKey="clicks"
               name="Cliques no WhatsApp"
               dot={days <= 30 ? { r: 3, strokeWidth: 0 } : false}
-              stroke="#52525b"
+              stroke="var(--color-muted)"
               fill="url(#fillClicks)"
               fillOpacity={1}
               strokeWidth={2}

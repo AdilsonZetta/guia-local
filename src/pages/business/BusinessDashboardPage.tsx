@@ -161,7 +161,7 @@ function Dashboard() {
                           {d.profiles.find((p) => p.id === r.user_id)
                             ?.full_name || 'Cliente'}
                         </strong>
-                        <span className="ml-4 text-amber-500">
+                        <span className="ml-4 text-green-strong">
                           {'★'.repeat(r.rating)}
                         </span>
                         <p className="mt-1 text-sm text-muted">{r.body}</p>

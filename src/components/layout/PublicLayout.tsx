@@ -56,13 +56,16 @@ export function PublicLayout() {
   return (
     <div className="mesh-shell public-shell flex min-h-svh flex-col">
       <MeshBackground />
+      <a className="skip-link" href="#conteudo">
+        Pular para o conteúdo
+      </a>
       <header className="public-header">
-        <div className="site-container flex h-16 items-center gap-6">
+        <div className="site-container flex h-14 items-center gap-3 sm:h-16 sm:gap-6">
           <Link
             to="/"
-            className="flex shrink-0 items-center gap-2 text-2xl font-extrabold tracking-tight"
+            className="flex shrink-0 items-center gap-1.5 text-[17px] font-extrabold leading-none tracking-tight sm:gap-2 sm:text-2xl"
           >
-            {identity.logo_url ? <img src={identity.logo_url} alt="" className="h-9 w-9 object-contain"/> : <MapPin className="brand-pin h-9 w-9 fill-brand text-brand" strokeWidth={1.5}/>}
+            {identity.logo_url ? <img src={identity.logo_url} alt="" className="h-6 w-6 object-contain sm:h-9 sm:w-9"/> : <MapPin aria-hidden="true" className="brand-pin h-6 w-6 fill-ink text-ink sm:h-9 sm:w-9" strokeWidth={1.5}/>}
             <span>{identity.site_name}</span>
           </Link>
           <span className="city-pill hidden sm:inline-flex">
@@ -126,11 +129,12 @@ export function PublicLayout() {
             )}
           </div>
           <button
-            className="ml-auto p-2 md:hidden"
-            aria-label="Abrir menu"
+            className="ml-auto inline-flex h-11 w-11 items-center justify-center md:hidden"
+            aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
-            {open ? <X /> : <Menu />}
+            {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </button>
         </div>
         {open && (
@@ -156,7 +160,7 @@ export function PublicLayout() {
           </nav>
         )}
       </header>
-      <main className="flex-1 pb-20 md:pb-0">
+      <main id="conteudo" className="min-w-0 flex-1 pb-4 md:pb-0">
         <Suspense fallback={<RouteFallback />}>
           <Outlet />
         </Suspense>
@@ -168,7 +172,7 @@ export function PublicLayout() {
         {identity.site_description && <span>{identity.site_description}</span>}
         <Link to="/indicar">Ajude a conectar sua cidade · Indicar empresa</Link>
       </footer>
-      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-white py-3 text-[11px] font-bold md:hidden">
+      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-white text-[11px] font-bold md:hidden">
         {[
           ...links,
           {
@@ -181,10 +185,10 @@ export function PublicLayout() {
             key={l.to}
             to={l.to}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-1 ${isActive ? 'text-brand' : 'text-muted'}`
+              `flex min-h-11 flex-col items-center justify-center gap-0.5 px-1 ${isActive ? 'text-brand' : 'text-muted'}`
             }
           >
-            <l.icon size={21} />
+            <l.icon aria-hidden="true" size={20} />
             {l.label === 'Minhas avaliações' ? 'Avaliações' : l.label}
           </NavLink>
         ))}

@@ -1,0 +1,9 @@
+upstream: https://github.com/addyosmani/agent-skills/tree/main/skills/performance-optimization
+repository: addyosmani/agent-skills
+revision: 39b723ceebf81474d0557c1fecd01eddab585563
+path: skills/performance-optimization
+license: MIT (repository LICENSE, Copyright (c) 2025 Addy Osmani)
+files:
+- SKILL.md (blob 296cf3f79e)
+- references/optimization-patterns.md
+fetched: 2026-11-17

@@ -1,0 +1,9 @@
+upstream: https://github.com/anthropics/skills/tree/main/skills/frontend-design
+repository: anthropics/skills
+revision: e4bb5d960d87126ff3b3a8af1a104b7db67560ba
+path: skills/frontend-design
+license: Apache-2.0 (LICENSE.txt in the skill directory)
+files:
+- SKILL.md (blob a5333457c4)
+- LICENSE.txt (blob f433b1a53f)
+fetched: 2026-11-17

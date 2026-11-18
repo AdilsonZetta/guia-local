@@ -50,14 +50,15 @@ function Promo() {
     canvas.height = 680
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Não foi possível gerar a imagem.')
-    ctx.fillStyle = '#e8f7f1'
+    const token = (name: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    ctx.fillStyle = token('--color-canvas')
     ctx.fillRect(0, 0, 1200, 680)
-    ctx.fillStyle = '#0F7B5A'
     ctx.beginPath()
     ctx.arc(1200, 0, 240, 0, Math.PI * 2)
-    ctx.fillStyle = '#ceefe2'
+    ctx.fillStyle = token('--color-green-soft')
     ctx.fill()
-    ctx.fillStyle = '#0F7B5A'
+    ctx.fillStyle = token('--color-green')
     ctx.font = 'bold 38px sans-serif'
     ctx.fillText('● Guia Local', 60, 70)
     if (b!.logo_url) {
@@ -75,7 +76,7 @@ function Promo() {
       })
       ctx.drawImage(img, 60, 65, 140, 140)
     }
-    ctx.fillStyle = '#164c39'
+    ctx.fillStyle = token('--color-ink')
     ctx.font = 'bold 46px sans-serif'
     ctx.fillText(b!.name, 60, 290, 1080)
     ctx.font = '30px sans-serif'
@@ -174,7 +175,7 @@ function Promo() {
                   </p>
                 </div>
               </div>
-              <p className="border-t border-emerald-100 pt-4 text-center font-bold">
+              <p className="border-t border-green-soft pt-4 text-center font-bold">
                 Conheça nossos serviços
               </p>
             </div>

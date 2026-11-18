@@ -66,6 +66,13 @@ export function BusinessProfilePage() {
         new URLSearchParams(window.location.search).get('tab') || ''
       ] || 'overview',
   )
+  function selectTab(id: string) {
+    setTab(id)
+    const url = new URL(window.location.href)
+    if (id === 'overview') url.searchParams.delete('tab')
+    else url.searchParams.set('tab', id === 'services' ? 'servicos' : 'avaliacoes')
+    window.history.replaceState(null, '', url)
+  }
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
@@ -269,7 +276,7 @@ export function BusinessProfilePage() {
       href={wa}
       target="_blank"
       rel="noopener noreferrer"
-      className="btn-primary"
+      className="btn-whatsapp max-sm:col-span-2 max-sm:w-full"
       onClick={() =>
         void logWhatsAppClick({
           businessId: business.id,
@@ -331,7 +338,7 @@ export function BusinessProfilePage() {
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xl text-amber-500">
+              <span className="text-xl text-green-strong">
                 {'★'.repeat(r.rating)}
                 <span className="text-gray-300">
                   {'★'.repeat(5 - r.rating)}
@@ -364,40 +371,41 @@ export function BusinessProfilePage() {
   }
   return (
     <div className="site-container space-y-5 py-5">
-      <nav className="flex gap-3 text-sm text-muted">
+      <nav className="flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-sm text-muted">
         <Link to="/">Início</Link>
         <span>/</span>
         <Link to={`/busca?categoria=${business.categories?.slug || ''}`}>
           {business.categories?.name}
         </Link>
         <span>/</span>
-        <span className="text-ink">{business.name}</span>
+        <span className="min-w-0 break-words text-ink">{business.name}</span>
       </nav>
-      <div className="flex flex-wrap items-center gap-5 py-2">
-        <BrandTile business={business} className="!h-24 !w-24 !rounded-2xl" />
-        <div>
-          <h1 className="text-3xl font-extrabold md:text-4xl">
+      <div className="flex flex-wrap items-center gap-3 py-1 sm:gap-5 sm:py-2">
+        <BrandTile business={business} className="!h-14 !w-14 !rounded-2xl sm:!h-24 sm:!w-24" />
+        <div className="min-w-0 flex-1">
+          <h1 className="break-words text-3xl font-extrabold md:text-4xl">
             {business.name}
           </h1>
-          <p className="mb-1 text-lg text-muted">
+          <p className="mb-1 text-base text-muted sm:text-lg">
             {business.categories?.name} • {city}, MG
           </p>
           <Rating {...ratingView(business)} />
         </div>
-        <div className="ml-auto flex flex-wrap gap-3">
+        <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:gap-3">
           <Button
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={saving || favoriteLoading || authLoading}
             onClick={favorite}
           >
             <Heart size={21} className={saved ? 'fill-current' : ''} />
             {saved ? 'Salvo' : 'Salvar'}
           </Button>
-          <Button variant="outline" onClick={share}>
+          <Button variant="outline" className="w-full sm:w-auto" onClick={share}>
             <Share2 size={20} />
             Compartilhar
           </Button>
-          <Link to={`/empresa/${slug}/avaliar`} className="btn-outline">
+          <Link to={`/empresa/${slug}/avaliar`} className="btn-outline w-full sm:w-auto">
             <Star size={22} />
             Avaliar
           </Link>
@@ -409,7 +417,7 @@ export function BusinessProfilePage() {
       <div
         role="tablist"
         aria-label="Informações da empresa"
-        className="flex gap-5 overflow-x-auto border-b border-line"
+        className="flex max-w-full gap-1 overflow-x-auto border-b border-line"
       >
         {[
           { id: 'overview', label: 'Visão geral', icon: Home },
@@ -420,10 +428,10 @@ export function BusinessProfilePage() {
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex shrink-0 items-center gap-3 border-b-[3px] px-5 py-3 text-lg ${tab === t.id ? 'border-brand font-bold text-brand' : 'border-transparent text-muted'}`}
+            onClick={() => selectTab(t.id)}
+            className={`flex min-h-11 shrink-0 items-center gap-2 border-b-[3px] px-3 py-2 text-sm sm:gap-3 sm:px-5 sm:text-lg ${tab === t.id ? 'border-brand font-bold text-brand' : 'border-transparent text-muted'}`}
           >
-            <t.icon size={23} />
+            <t.icon aria-hidden="true" size={20} className="sm:h-6 sm:w-6" />
             {t.label}
           </button>
         ))}
@@ -431,7 +439,7 @@ export function BusinessProfilePage() {
       <div role="tabpanel">
         {tab === 'overview' && (
           <>
-            <div className="mb-4 grid h-48 grid-cols-[2.3fr_1fr_1fr] gap-3 md:h-64">
+            <div className="profile-gallery mb-4 grid h-48 grid-cols-[2.3fr_1fr_1fr] gap-3 md:h-64">
               {pictures.slice(0, 3).map((p, i) => (
                 <button
                   key={`${p.url}-${i}`}
@@ -658,7 +666,7 @@ export function BusinessProfilePage() {
                       )
                     : '—'}
                 </strong>
-                <p className="text-3xl text-amber-500">★★★★★</p>
+                <p className="text-3xl text-green-strong">★★★★★</p>
                 <p className="text-muted">{data.reviews.length} avaliações</p>
               </div>
               <div className="space-y-3">
@@ -671,7 +679,7 @@ export function BusinessProfilePage() {
                       <span className="w-16 text-muted">{n} estrelas</span>
                       <span className="h-3.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                         <span
-                          className="block h-full rounded-full bg-amber-400"
+                          className="block h-full rounded-full bg-green"
                           style={{
                             width: `${data.reviews.length ? (count / data.reviews.length) * 100 : 0}%`,
                           }}

@@ -59,16 +59,17 @@ export function SearchBar({
       }}
     >
       <label className="search-field">
-        <Search className="shrink-0" size={24} />
+        <Search aria-hidden="true" className="shrink-0" size={24} />
         <input
           aria-label="Qual serviço você procura?"
-          placeholder="Qual serviço você procura?"
+          placeholder="Encanador, padaria, pet shop…"
+          enterKeyHint="search"
           value={q}
           onChange={(event) => setQ(event.target.value)}
         />
       </label>
       <label className="search-field">
-        <MapPin className="shrink-0" size={23} />
+        <MapPin aria-hidden="true" className="shrink-0" size={23} />
         <NeighborhoodSelect
           bare
           neighborhoods={neighborhoods}
@@ -81,7 +82,7 @@ export function SearchBar({
         />
       </label>
       <button className="btn-primary text-lg" type="submit">
-        <Search size={25} />
+        <Search aria-hidden="true" size={25} />
         Buscar
       </button>
     </form>

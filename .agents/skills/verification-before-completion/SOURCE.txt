@@ -1,0 +1,8 @@
+upstream: https://github.com/obra/superpowers/tree/main/skills/verification-before-completion
+repository: obra/superpowers
+revision: 22f0b463e7a5e579904dd6211a520321035526f7
+path: skills/verification-before-completion
+license: MIT (repository LICENSE, Copyright (c) 2025 Jesse Vincent)
+files:
+- SKILL.md (blob 7d45333cc4)
+fetched: 2026-11-17

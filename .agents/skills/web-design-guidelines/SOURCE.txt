@@ -1,0 +1,10 @@
+upstream skill: https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines
+skill repository: vercel-labs/agent-skills
+skill revision: 1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62
+skill path: skills/web-design-guidelines/SKILL.md (blob ceae92ab31)
+guidelines: https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md
+guidelines raw: https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md
+guidelines revision: 434b7f91364665f2f733b310ec54809bf8f37937
+license: MIT for command.md and LICENSE, from vercel-labs/web-interface-guidelines (Copyright (c) 2025 Vercel Labs).
+The agent-skills repository did not publish a LICENSE file at the skill revision; SKILL.md has no license field.
+fetched: 2026-11-17

@@ -22,11 +22,11 @@ const themes: Record<
   string,
   { background: string; card: string; accent: string }
 > = {
-  dark: { background: '#053e30', card: '#0F7B5A', accent: '#ffffff' },
-  forest: { background: '#e8f3ed', card: '#0F7B5A', accent: '#164c39' },
-  rose: { background: '#fff0f3', card: '#a93862', accent: '#702844' },
-  ocean: { background: '#e9f5fc', card: '#126b91', accent: '#154b65' },
-  sand: { background: '#faf2e5', card: '#876039', accent: '#62472c' },
+  dark: { background: 'var(--color-ink)', card: 'var(--color-green)', accent: 'var(--color-canvas)' },
+  forest: { background: 'var(--color-canvas)', card: 'var(--color-green)', accent: 'var(--color-ink)' },
+  rose: { background: 'var(--color-brand-soft)', card: 'var(--color-orange)', accent: 'var(--color-ink)' },
+  ocean: { background: 'var(--color-green-wash)', card: 'var(--color-green-strong)', accent: 'var(--color-ink)' },
+  sand: { background: 'var(--color-canvas)', card: 'var(--color-orange-soft)', accent: 'var(--color-ink)' },
 }
 export function LinkInBioPage() {
   const { slug = '' } = useParams()
@@ -96,7 +96,8 @@ export function LinkInBioPage() {
   const theme = themes[link.theme] ?? themes.forest
   return (
     <main
-      className="bio-page mesh-shell relative flex min-h-svh justify-center overflow-hidden px-5 py-12 text-ink"
+      className="bio-page mesh-shell relative flex min-h-svh justify-center overflow-hidden px-5 py-12"
+      style={{ background: theme.background, color: theme.accent }}
     >
       <MeshBackground />
       <div className="relative z-10 w-full max-w-xl py-8 text-center">
@@ -130,11 +131,11 @@ export function LinkInBioPage() {
           </p>
         )}
         <BrandTile business={business} className="bio-logo" />
-        <h1 className="mt-5 text-4xl font-extrabold text-ink md:text-5xl">
+        <h1 className="mt-5 text-4xl font-extrabold md:text-5xl">
           {link.headline || business.name}
         </h1>
         {link.bio && (
-          <p className="mt-3 whitespace-pre-wrap text-2xl leading-snug text-muted">
+          <p className="mt-3 whitespace-pre-wrap text-2xl leading-snug opacity-80">
             {link.bio}
           </p>
         )}
@@ -164,9 +165,9 @@ export function LinkInBioPage() {
                 }
                 rel="noopener noreferrer"
                 style={{
-                  backgroundColor: whatsapp ? theme.card : 'var(--glass-fill)',
-                  color: whatsapp ? 'white' : link.theme === 'dark' ? '#0e1536' : theme.accent,
-                  borderColor: theme.card,
+                  backgroundColor: whatsapp ? 'var(--color-whatsapp)' : 'var(--glass-fill)',
+                  color: whatsapp ? '#fff' : 'var(--color-ink)',
+                  borderColor: whatsapp ? 'var(--color-whatsapp)' : theme.card,
                 }}
                 className="bio-link flex min-h-20 items-center justify-between gap-4 rounded-2xl border-2 px-6 py-5 text-xl font-extrabold shadow-sm transition hover:-translate-y-0.5"
                 onClick={() => {
@@ -199,7 +200,7 @@ export function LinkInBioPage() {
           to="/"
           className="mt-12 flex items-center justify-center gap-2 text-2xl font-extrabold"
         >
-          <MapPin size={32} className="fill-brand text-brand" /> Guia Local
+          <MapPin size={32} className="fill-current" /> Guia Local
         </Link>
       </div>
     </main>

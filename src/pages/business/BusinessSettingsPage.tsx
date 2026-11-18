@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { checked, useAction, publicUrl } from '@/lib/management'
+import { tileTone } from '@/components/business/BusinessIdentity'
 import {
   BusinessGate,
   Feedback,
@@ -80,7 +81,7 @@ function Settings() {
               Estas informações são usadas para acessar sua conta.
             </p>
             <div className="flex gap-6">
-              <span className="avatar h-20 w-20 bg-rose-100 text-rose-800 text-2xl">
+              <span className="avatar h-20 w-20 text-2xl" style={tileTone(name || 'guia')}>
                 {name
                   .split(' ')
                   .map((n) => n[0])

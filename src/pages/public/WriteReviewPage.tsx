@@ -88,7 +88,7 @@ export function WriteReviewPage() {
       <div className="grid items-start gap-5 lg:grid-cols-[1.65fr_0.9fr]">
         <Card className="p-6">
           <div className="mb-6 flex items-center gap-4">
-            <BrandTile business={business} className="!h-22 !w-22" />
+            <BrandTile business={business} className="!h-14 !w-14 sm:!h-22 sm:!w-22" />
             <div>
               <h2 className="text-2xl font-extrabold">{business.name}</h2>
               <p className="text-muted">{business.categories?.name}</p>
