@@ -1,5 +1,5 @@
-import { WhatsAppIcon } from '@/components/WhatsAppIcon'
 import { Photo } from '@/components/Photo'
+import { CallPill, WhatsAppPill } from '@/components/business/ContactPills'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -21,7 +21,7 @@ import { useQueryResource } from '@/lib/queries'
 import { applySeo } from '@/lib/seo'
 import { supabase } from '@/lib/supabase'
 import { logVisit, logWhatsAppClick } from '@/lib/analytics'
-import { WEEKDAYS, whatsappLink } from '@/lib/utils'
+import { WEEKDAYS, businessTelHref, businessWhatsappHref } from '@/lib/utils'
 import { useAuth } from '@/context/AuthProvider'
 import {
   BrandTile,
@@ -268,15 +268,14 @@ export function BusinessProfilePage() {
   if (!business || !resource.data) return <MissingBusiness />
   const data = resource.data
   const reviewBusiness = business
-  const wa = business.show_whatsapp
-    ? whatsappLink(business.whatsapp || business.phone)
-    : null
-  const contact = wa && (
-    <a
+  const wa = businessWhatsappHref(business)
+  const tel = businessTelHref(business)
+  const contactClass = 'max-sm:col-span-2 max-sm:w-full'
+  const contact = wa ? (
+    <WhatsAppPill
       href={wa}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="btn-whatsapp max-sm:col-span-2 max-sm:w-full"
+      label="Chamar no WhatsApp"
+      className={contactClass}
       onClick={() =>
         void logWhatsAppClick({
           businessId: business.id,
@@ -284,15 +283,14 @@ export function BusinessProfilePage() {
           source: visitSource(),
         })
       }
-    >
-      <WhatsAppIcon size={24} />
-      Chamar no WhatsApp
-    </a>
-  )
+    />
+  ) : tel ? (
+    <CallPill href={tel} className={contactClass} />
+  ) : null
   const reviewLink = (
-    <Link to={`/empresa/${slug}/avaliar`} className="btn-outline">
-      <Star size={23} />
-      Escrever avaliação
+    <Link to={`/empresa/${slug}/avaliar`} className="btn-outline w-full">
+      <Star aria-hidden="true" size={18} />
+      <span className="btn-label">Escrever avaliação</span>
     </Link>
   )
   const pictures = [
@@ -391,23 +389,23 @@ export function BusinessProfilePage() {
           </p>
           <Rating {...ratingView(business)} />
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:gap-3">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:gap-3">
           <Button
             variant="outline"
-            className="w-full sm:w-auto"
+            className="w-full min-w-0 sm:w-auto"
             disabled={saving || favoriteLoading || authLoading}
             onClick={favorite}
           >
-            <Heart size={21} className={saved ? 'fill-current' : ''} />
-            {saved ? 'Salvo' : 'Salvar'}
+            <Heart aria-hidden="true" size={18} className={saved ? 'fill-current' : ''} />
+            <span className="btn-label">{saved ? 'Salvo' : 'Salvar'}</span>
           </Button>
-          <Button variant="outline" className="w-full sm:w-auto" onClick={share}>
-            <Share2 size={20} />
-            Compartilhar
+          <Button variant="outline" className="w-full min-w-0 sm:w-auto" onClick={share}>
+            <Share2 aria-hidden="true" size={18} />
+            <span className="btn-label">Compartilhar</span>
           </Button>
-          <Link to={`/empresa/${slug}/avaliar`} className="btn-outline w-full sm:w-auto">
-            <Star size={22} />
-            Avaliar
+          <Link to={`/empresa/${slug}/avaliar`} className="btn-outline w-full min-w-0 sm:w-auto">
+            <Star aria-hidden="true" size={18} />
+            <span className="btn-label">Avaliar</span>
           </Link>
           {contact}
         </div>

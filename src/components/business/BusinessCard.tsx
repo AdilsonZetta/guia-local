@@ -1,12 +1,12 @@
-import { WhatsAppIcon } from '@/components/WhatsAppIcon'
 import { Photo } from '@/components/Photo'
-import { Heart, MapPin, Phone } from 'lucide-react'
+import { CallPill, WhatsAppPill } from '@/components/business/ContactPills'
+import { Heart, MapPin } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { logWhatsAppClick } from '@/lib/analytics'
 import type { PublicBusiness } from '@/lib/public-data'
-import { businessLocation, cn, whatsappLink } from '@/lib/utils'
+import { businessLocation, businessTelHref, businessWhatsappHref, cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { BrandTile, Rating, ReceivingChip, ratingView } from './BusinessIdentity'
@@ -86,12 +86,8 @@ export function BusinessCard({
   })
   const saved = favorites.data?.includes(business.id) ?? false
   const viewed = ratingView(business)
-  const wa =
-    business.show_whatsapp !== false
-      ? whatsappLink(business.whatsapp || business.phone)
-      : null
-  const telDigits = business.phone?.replace(/\D/g, '')
-  const tel = telDigits ? `tel:+${telDigits.startsWith('55') ? telDigits : `55${telDigits}`}` : null
+  const wa = businessWhatsappHref(business)
+  const tel = businessTelHref(business)
   const href = `/empresa/${business.slug}?src=${encodeURIComponent(source)}`
   const place = businessLocation(business, city)
   async function toggle() {
@@ -204,18 +200,11 @@ export function BusinessCard({
               <Link to={href} className="btn-outline h-10 px-5 text-sm">
                 Ver perfil
               </Link>
-              {source !== 'home' && wa && (
-                <a
-                  href={wa}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-whatsapp h-10 text-sm"
-                  onClick={trackWhatsApp}
-                >
-                  <WhatsAppIcon size={20} />
-                  Contato
-                </a>
-              )}
+              {source !== 'home' && wa ? (
+                <WhatsAppPill href={wa} label="Contato" className="text-sm" onClick={trackWhatsApp} />
+              ) : source !== 'home' && tel ? (
+                <CallPill href={tel} className="text-sm" />
+              ) : null}
             </div>
           </div>
           {error ? (
@@ -301,26 +290,19 @@ function MobileCard({
           />
         </div>
       </div>
-      <div className="flex gap-2 px-3 pb-3">
-        <Link to={href} className="btn-outline min-h-11 flex-1 px-3 text-sm">
-          Ver perfil
+      <div className="flex min-w-0 gap-2 px-3 pb-3">
+        <Link to={href} className="btn-outline min-h-11 flex-1 text-sm">
+          <span className="btn-label">Ver perfil</span>
         </Link>
         {wa ? (
-          <a
+          <WhatsAppPill
             href={wa}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-whatsapp min-h-11 flex-1 px-3 text-sm"
+            label="WhatsApp"
+            className="min-h-11 flex-1 text-sm"
             onClick={onWhatsApp}
-          >
-            <WhatsAppIcon size={18} />
-            WhatsApp
-          </a>
+          />
         ) : tel ? (
-          <a href={tel} className="btn-outline min-h-11 flex-1 px-3 text-sm">
-            <Phone aria-hidden="true" size={18} />
-            Ligar
-          </a>
+          <CallPill href={tel} className="min-h-11 flex-1 text-sm" />
         ) : null}
       </div>
       {error ? (
